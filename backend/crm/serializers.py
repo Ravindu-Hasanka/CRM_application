@@ -94,10 +94,13 @@ class OrganizationCreateSerializer(serializers.ModelSerializer):
 
 
 class CompanySerializer(serializers.ModelSerializer):
+    organization_id = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Company
         fields = (
             'id',
+            'organization',
             'organization_id',
             'name',
             'industry',
@@ -107,14 +110,37 @@ class CompanySerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         )
+        read_only_fields = ('id', 'is_deleted', 'created_at', 'updated_at', 'organization_id')
+
+    def validate(self, attrs):
+        request = self.context['request']
+        actor = request.user
+        organization = attrs.get('organization')
+
+        if actor.role != User.Role.SYSTEM_ADMIN:
+            if organization and organization != actor.organization:
+                raise serializers.ValidationError('You can only manage companies in your own organization.')
+            attrs['organization'] = actor.organization
+        elif not organization and self.instance is None:
+            raise serializers.ValidationError('Organization is required for system admin company creation.')
+
+        return attrs
 
 
 class ContactSerializer(serializers.ModelSerializer):
+    organization_id = serializers.IntegerField(read_only=True)
+    phone = serializers.CharField(
+        required=False,
+        allow_blank=True,
+    )
+
     class Meta:
         model = Contact
         fields = (
             'id',
+            'organization',
             'organization_id',
+            'company',
             'company_id',
             'full_name',
             'email',
@@ -124,6 +150,38 @@ class ContactSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         )
+        read_only_fields = ('id', 'is_deleted', 'created_at', 'updated_at', 'organization_id', 'company_id')
+
+    def validate(self, attrs):
+        request = self.context['request']
+        actor = request.user
+        company = attrs.get('company') or getattr(self.instance, 'company', None)
+        organization = attrs.get('organization')
+
+        if not company:
+            raise serializers.ValidationError('Company is required.')
+
+        if actor.role != User.Role.SYSTEM_ADMIN:
+            if company.organization_id != actor.organization_id:
+                raise serializers.ValidationError('You can only manage contacts in your own organization.')
+            if organization and organization != actor.organization:
+                raise serializers.ValidationError('Organization must match your organization.')
+            attrs['organization'] = actor.organization
+        else:
+            if not organization and self.instance is None:
+                attrs['organization'] = company.organization
+
+        if attrs.get('organization') != company.organization:
+            raise serializers.ValidationError('Contact organization must match company organization.')
+
+        return attrs
+
+    def validate_phone(self, value):
+        if value == '':
+            return value
+        if not value.isdigit() or not 8 <= len(value) <= 15:
+            raise serializers.ValidationError('Phone must contain 8-15 digits.')
+        return value
 
 
 class ActivityLogSerializer(serializers.ModelSerializer):

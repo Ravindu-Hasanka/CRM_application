@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import OpenApiExample, extend_schema
-from rest_framework import generics
+from rest_framework import generics, status, viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -8,7 +8,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .mixins import OrganizationScopedQuerysetMixin
 from .models import ActivityLog, Company, Contact, Organization, User
-from .permissions import IsAdminOrManagerRole, IsSystemAdminRole
+from .permissions import CompanyRBACPermission, ContactRBACPermission, IsAdminOrManagerRole, IsSystemAdminRole
 from .serializers import (
     ActivityLogSerializer,
     CompanySerializer,
@@ -20,6 +20,18 @@ from .serializers import (
 )
 
 UserModel = get_user_model()
+
+
+def _create_activity_log(*, request, action_type: str, instance, metadata: dict | None = None):
+    user = request.user
+    ActivityLog.objects.create(
+        organization=instance.organization,
+        user=user if user.is_authenticated else None,
+        action_type=action_type,
+        model_name=instance.__class__.__name__,
+        object_id=str(instance.pk),
+        metadata=metadata or {},
+    )
 
 
 class LoginView(TokenObtainPairView):
@@ -167,31 +179,77 @@ class OrganizationCreateView(generics.CreateAPIView):
         return super().post(request, *args, **kwargs)
 
 
-class CompanyListView(OrganizationScopedQuerysetMixin, generics.ListAPIView):
-    queryset = Company.objects.filter(is_deleted=False).order_by('-created_at')
-    serializer_class = CompanySerializer
-    permission_classes = [IsAuthenticated]
-    organization_field = 'organization'
-    @extend_schema(tags=['Companies'], summary='List companies (scoped by organization)')
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
-
-
-class ContactListView(OrganizationScopedQuerysetMixin, generics.ListAPIView):
-    queryset = Contact.objects.filter(is_deleted=False).select_related('company').order_by('-created_at')
-    serializer_class = ContactSerializer
-    permission_classes = [IsAuthenticated]
-    organization_field = 'organization'
-    @extend_schema(tags=['Contacts'], summary='List contacts (scoped by organization)')
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
-
-
 class ActivityLogListView(OrganizationScopedQuerysetMixin, generics.ListAPIView):
     queryset = ActivityLog.objects.select_related('user').order_by('-timestamp')
     serializer_class = ActivityLogSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrManagerRole]
     organization_field = 'organization'
     @extend_schema(tags=['Activity Logs'], summary='List activity logs (scoped by organization)')
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
+
+
+class CompanyViewSet(OrganizationScopedQuerysetMixin, viewsets.ModelViewSet):
+    queryset = Company.objects.filter(is_deleted=False).order_by('-created_at')
+    serializer_class = CompanySerializer
+    permission_classes = [IsAuthenticated, CompanyRBACPermission]
+    organization_field = 'organization'
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        _create_activity_log(request=self.request, action_type=ActivityLog.ActionType.CREATE, instance=instance)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        _create_activity_log(
+            request=self.request,
+            action_type=ActivityLog.ActionType.UPDATE,
+            instance=instance,
+            metadata={'updated_fields': list(serializer.validated_data.keys())},
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.check_object_permissions(request, instance)
+        instance.is_deleted = True
+        instance.save(update_fields=['is_deleted', 'updated_at'])
+        _create_activity_log(request=request, action_type=ActivityLog.ActionType.DELETE, instance=instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ContactViewSet(OrganizationScopedQuerysetMixin, viewsets.ModelViewSet):
+    queryset = Contact.objects.filter(is_deleted=False).select_related('company').order_by('-created_at')
+    serializer_class = ContactSerializer
+    permission_classes = [IsAuthenticated, ContactRBACPermission]
+    organization_field = 'organization'
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        _create_activity_log(request=self.request, action_type=ActivityLog.ActionType.CREATE, instance=instance)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        _create_activity_log(
+            request=self.request,
+            action_type=ActivityLog.ActionType.UPDATE,
+            instance=instance,
+            metadata={'updated_fields': list(serializer.validated_data.keys())},
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.check_object_permissions(request, instance)
+        instance.is_deleted = True
+        instance.save(update_fields=['is_deleted', 'updated_at'])
+        _create_activity_log(request=request, action_type=ActivityLog.ActionType.DELETE, instance=instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)

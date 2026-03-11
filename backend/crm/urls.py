@@ -1,10 +1,11 @@
 from django.urls import re_path
+from rest_framework.routers import SimpleRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .api_views import (
     ActivityLogListView,
-    CompanyListView,
-    ContactListView,
+    CompanyViewSet,
+    ContactViewSet,
     LoginView,
     MeView,
     OrganizationCreateView,
@@ -12,6 +13,10 @@ from .api_views import (
     UserCreateView,
     UserListView,
 )
+
+router = SimpleRouter(trailing_slash='/?')
+router.register(r'companies', CompanyViewSet, basename='company')
+router.register(r'contacts', ContactViewSet, basename='contact')
 
 urlpatterns = [
     re_path(r'^auth/login/?$', LoginView.as_view(), name='auth-login'),
@@ -21,7 +26,7 @@ urlpatterns = [
     re_path(r'^platform/organizations/?$', OrganizationCreateView.as_view(), name='organization-create'),
     re_path(r'^users/?$', UserCreateView.as_view(), name='user-create'),
     re_path(r'^users/list/?$', UserListView.as_view(), name='user-list'),
-    re_path(r'^companies/?$', CompanyListView.as_view(), name='company-list'),
-    re_path(r'^contacts/?$', ContactListView.as_view(), name='contact-list'),
     re_path(r'^activity-logs/?$', ActivityLogListView.as_view(), name='activity-log-list'),
 ]
+
+urlpatterns += router.urls
