@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import type { Company } from '../../types'
 
 export default function CompaniesPage() {
+  const pageSize = 10
   const { tokens, user } = useAuth()
   const [companies, setCompanies] = useState<Company[]>([])
   const [count, setCount] = useState(0)
@@ -33,6 +34,18 @@ export default function CompaniesPage() {
   }, [tokens?.access, page, search, countryFilter])
 
   const countries = useMemo(() => ['All', ...new Set(companies.map((company) => company.country))], [companies])
+  const totalPages = Math.max(1, Math.ceil(count / pageSize))
+  const visiblePages = useMemo(() => {
+    const maxVisible = 5
+    let start = Math.max(1, page - Math.floor(maxVisible / 2))
+    let end = Math.min(totalPages, start + maxVisible - 1)
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1)
+    }
+    const pages: number[] = []
+    for (let p = start; p <= end; p += 1) pages.push(p)
+    return pages
+  }, [page, totalPages])
 
   const canEdit = user?.role === 'Admin' || user?.role === 'Manager' || user?.role === 'SystemAdmin'
   const canDelete = user?.role === 'Admin' || user?.role === 'SystemAdmin'
@@ -42,7 +55,12 @@ export default function CompaniesPage() {
     if (!window.confirm('Delete this company? It will be soft deleted.')) return
     await deleteCompany(tokens.access, companyId)
     setCompanies((prev) => prev.filter((item) => item.id !== companyId))
-    setCount((prev) => Math.max(0, prev - 1))
+    setCount((prev) => {
+      const nextCount = Math.max(0, prev - 1)
+      const nextTotalPages = Math.max(1, Math.ceil(nextCount / pageSize))
+      if (page > nextTotalPages) setPage(nextTotalPages)
+      return nextCount
+    })
   }
 
   return (
@@ -115,20 +133,22 @@ export default function CompaniesPage() {
                 <td>
                   <span className="status-dot" /> Active
                 </td>
-                <td className="inline-actions">
-                  <Link to={`/app/companies/${company.id}`} className="table-link">
-                    View
-                  </Link>
-                  {canEdit && (
-                    <Link to={`/app/companies/${company.id}/edit`} className="table-link">
-                      Edit
+                <td>
+                  <div className="inline-actions">
+                    <Link to={`/app/companies/${company.id}`} className="table-link">
+                      View
                     </Link>
-                  )}
-                  {canDelete && (
-                    <button type="button" className="table-link" onClick={() => void onDelete(company.id)}>
-                      Delete
-                    </button>
-                  )}
+                    {canEdit && (
+                      <Link to={`/app/companies/${company.id}/edit`} className="table-link">
+                        Edit
+                      </Link>
+                    )}
+                    {canDelete && (
+                      <button type="button" className="table-link" onClick={() => void onDelete(company.id)}>
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -143,18 +163,20 @@ export default function CompaniesPage() {
         <div className="table-footer">
           <span>
             {count > 0
-              ? `Showing ${(page - 1) * 10 + 1} to ${Math.min(page * 10, count)} of ${count} entries`
+              ? `Showing ${(page - 1) * pageSize + 1} to ${Math.min(page * pageSize, count)} of ${count} entries`
               : 'Showing 0 entries'}
           </span>
           <div className="inline-actions">
-            <button className={`chip ${page === 1 ? 'active' : ''}`} onClick={() => setPage(1)}>
-              1
+            <button type="button" className="chip" disabled={page === 1} onClick={() => setPage(page - 1)}>
+              Prev
             </button>
-            <button className={`chip ${page === 2 ? 'active' : ''}`} onClick={() => setPage(2)}>
-              2
-            </button>
-            <button className={`chip ${page === 3 ? 'active' : ''}`} onClick={() => setPage(3)}>
-              3
+            {visiblePages.map((p) => (
+              <button key={p} type="button" className={`chip ${page === p ? 'active' : ''}`} onClick={() => setPage(p)}>
+                {p}
+              </button>
+            ))}
+            <button type="button" className="chip" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+              Next
             </button>
           </div>
         </div>

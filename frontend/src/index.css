@@ -895,6 +895,13 @@ th {
   font-weight: 700;
 }
 
+button.table-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
 .company-cell {
   display: inline-flex;
   align-items: center;
