@@ -1,26 +1,39 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { getActivityLogs } from '../../api/client'
+import { ApiError, listActivityLogs } from '../../api/client'
 import { useAuth } from '../../contexts/AuthContext'
 import type { ActivityLog } from '../../types'
 
 export default function ActivityLogsPage() {
   const { tokens } = useAuth()
   const [logs, setLogs] = useState<ActivityLog[]>([])
+  const [count, setCount] = useState(0)
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
   const [actionFilter, setActionFilter] = useState<'ALL' | 'CREATE' | 'UPDATE' | 'DELETE'>('ALL')
   const [modelFilter, setModelFilter] = useState('ALL')
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (!tokens?.access) return
-    getActivityLogs(tokens.access).then(setLogs).catch(() => setLogs([]))
-  }, [tokens?.access])
+    listActivityLogs(tokens.access, {
+      page,
+      search: search || undefined,
+      action_type: actionFilter === 'ALL' ? undefined : actionFilter,
+      model_name: modelFilter === 'ALL' ? undefined : modelFilter,
+    })
+      .then((response) => {
+        setLogs(response.results)
+        setCount(response.count)
+      })
+      .catch((err) => {
+        setLogs([])
+        setCount(0)
+        setError(err instanceof ApiError ? err.message : 'Failed to load activity logs.')
+      })
+  }, [tokens?.access, page, search, actionFilter, modelFilter])
 
   const models = useMemo(() => ['ALL', ...new Set(logs.map((log) => log.model_name))], [logs])
-  const filtered = logs.filter((log) => {
-    const actionMatches = actionFilter === 'ALL' || log.action_type === actionFilter
-    const modelMatches = modelFilter === 'ALL' || log.model_name === modelFilter
-    return actionMatches && modelMatches
-  })
 
   return (
     <section className="content-stack">
@@ -29,13 +42,33 @@ export default function ActivityLogsPage() {
         <p>Audit events scoped to your organization access level.</p>
       </header>
       <div className="panel filters">
-        <select value={actionFilter} onChange={(event) => setActionFilter(event.target.value as typeof actionFilter)}>
+        <input
+          placeholder="Search logs..."
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value)
+            setPage(1)
+          }}
+        />
+        <select
+          value={actionFilter}
+          onChange={(event) => {
+            setActionFilter(event.target.value as typeof actionFilter)
+            setPage(1)
+          }}
+        >
           <option value="ALL">All actions</option>
           <option value="CREATE">Create</option>
           <option value="UPDATE">Update</option>
           <option value="DELETE">Delete</option>
         </select>
-        <select value={modelFilter} onChange={(event) => setModelFilter(event.target.value)}>
+        <select
+          value={modelFilter}
+          onChange={(event) => {
+            setModelFilter(event.target.value)
+            setPage(1)
+          }}
+        >
           {models.map((model) => (
             <option key={model} value={model}>
               {model}
@@ -55,7 +88,7 @@ export default function ActivityLogsPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((log) => (
+            {logs.map((log) => (
               <tr key={log.id}>
                 <td>{new Date(log.timestamp).toLocaleString()}</td>
                 <td>{log.user_id ?? '-'}</td>
@@ -66,13 +99,32 @@ export default function ActivityLogsPage() {
                 <td>{log.object_id}</td>
               </tr>
             ))}
-            {!filtered.length && (
+            {!logs.length && (
               <tr>
                 <td colSpan={5}>No activity logs found for selected filters.</td>
               </tr>
             )}
           </tbody>
         </table>
+        {error && <p className="form-error" style={{ marginTop: '0.75rem' }}>{error}</p>}
+        <div className="table-footer">
+          <span>
+            {count > 0
+              ? `Showing ${(page - 1) * 10 + 1} to ${Math.min(page * 10, count)} of ${count} entries`
+              : 'Showing 0 entries'}
+          </span>
+          <div className="inline-actions">
+            <button className={`chip ${page === 1 ? 'active' : ''}`} onClick={() => setPage(1)}>
+              1
+            </button>
+            <button className={`chip ${page === 2 ? 'active' : ''}`} onClick={() => setPage(2)}>
+              2
+            </button>
+            <button className={`chip ${page === 3 ? 'active' : ''}`} onClick={() => setPage(3)}>
+              3
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   )

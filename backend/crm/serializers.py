@@ -111,6 +111,9 @@ class CompanySerializer(serializers.ModelSerializer):
             'updated_at',
         )
         read_only_fields = ('id', 'is_deleted', 'created_at', 'updated_at', 'organization_id')
+        extra_kwargs = {
+            'organization': {'required': False},
+        }
 
     def validate(self, attrs):
         request = self.context['request']
@@ -151,6 +154,9 @@ class ContactSerializer(serializers.ModelSerializer):
             'updated_at',
         )
         read_only_fields = ('id', 'is_deleted', 'created_at', 'updated_at', 'organization_id', 'company_id')
+        extra_kwargs = {
+            'organization': {'required': False},
+        }
 
     def validate(self, attrs):
         request = self.context['request']

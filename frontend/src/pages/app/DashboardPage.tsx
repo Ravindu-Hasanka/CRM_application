@@ -60,9 +60,6 @@ export default function DashboardPage() {
               </div>
               <p>{stat.label}</p>
               <h3>{loading ? '...' : stat.value}</h3>
-              <span className={`trend ${index === 2 ? 'negative' : ''}`}>
-                {index === 2 ? '-2%' : index === 0 ? '+12%' : '+5.2%'}
-              </span>
             </article>
           )
         })}

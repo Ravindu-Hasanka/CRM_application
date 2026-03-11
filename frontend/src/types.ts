@@ -45,6 +45,7 @@ export interface ActivityLog {
   id: number
   organization_id: number
   user_id: number | null
+  user_email?: string | null
   action_type: 'CREATE' | 'UPDATE' | 'DELETE'
   model_name: string
   object_id: string

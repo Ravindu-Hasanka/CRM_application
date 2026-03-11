@@ -35,7 +35,7 @@ export default function LoginPage() {
     <div className="auth-page auth-login-page">
       <section className="auth-side-panel auth-side-blue">
         <div className="auth-brand inline-actions" style={{ color: 'white' }}>
-          <FaStarOfLife className="h-4 w-4" /> NexusCRM
+          <FaStarOfLife className="h-4 w-4" /> NexGen CRM
         </div>
         <h2>Empower your sales team to reach new heights.</h2>
         <p>

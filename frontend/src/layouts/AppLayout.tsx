@@ -1,6 +1,6 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { FaBuilding, FaRegCircleUser } from 'react-icons/fa6'
-import { FiActivity, FiBarChart2, FiGrid, FiLogOut, FiSearch, FiSettings } from 'react-icons/fi'
+import { FiActivity, FiBarChart2, FiGrid, FiLogOut } from 'react-icons/fi'
 
 import RoleBadge from '../components/RoleBadge'
 import { useAuth } from '../contexts/AuthContext'
@@ -39,12 +39,6 @@ export default function AppLayout() {
           })}
         </nav>
 
-        <p className="sidebar-system-label">SYSTEM</p>
-        <button type="button" className="menu-link menu-link-static">
-          <FiSettings className="h-4 w-4" />
-          Settings
-        </button>
-
         <div className="sidebar-user">
           <p className="sidebar-user-name">{user?.email ?? 'user@company.com'}</p>
           <p className="sidebar-user-label">{role}</p>
@@ -59,18 +53,14 @@ export default function AppLayout() {
       <div className="app-main">
         <header className="app-topbar">
           <div className="topbar-tabs">
-            <strong>Nexus Corp</strong>
             <span className="topbar-tab-active">Overview</span>
             <span className="inline-actions">
               <FiBarChart2 className="h-4 w-4" />
               Reports
             </span>
           </div>
-          <div className="inline-actions" style={{ width: '100%' }}>
-            <FiSearch className="h-4 w-4" />
-            <input className="topbar-search" placeholder="Search data..." />
-          </div>
-          <div className="inline-actions">
+          
+          <div className="inline-actions topbar-meta">
             <span className="badge badge-neutral">Org ID: {user?.organization_id ?? 'Platform'}</span>
             {user && <RoleBadge role={user.role} />}
           </div>

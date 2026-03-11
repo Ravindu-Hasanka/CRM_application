@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { FaCircle } from 'react-icons/fa'
 
-import { getCompanies, getContacts } from '../../api/client'
+import { ApiError, createContact, deleteContact, getCompany, listContacts, updateContact } from '../../api/client'
 import { useAuth } from '../../contexts/AuthContext'
 import type { Company, Contact } from '../../types'
 
@@ -11,13 +11,19 @@ export default function CompanyDetailPage() {
   const { tokens, user } = useAuth()
   const [company, setCompany] = useState<Company | null>(null)
   const [contacts, setContacts] = useState<Contact[]>([])
+  const [contactName, setContactName] = useState('')
+  const [contactEmail, setContactEmail] = useState('')
+  const [contactPhone, setContactPhone] = useState('')
+  const [contactRole, setContactRole] = useState('')
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!id || !tokens?.access) return
-    Promise.all([getCompanies(tokens.access), getContacts(tokens.access)])
-      .then(([companiesRes, contactsRes]) => {
-        setCompany(companiesRes.find((item) => item.id === Number(id)) ?? null)
-        setContacts(contactsRes.filter((contact) => contact.company_id === Number(id)))
+    Promise.all([getCompany(tokens.access, Number(id)), listContacts(tokens.access, { company_id: Number(id), page: 1 })])
+      .then(([companyRes, contactsRes]) => {
+        setCompany(companyRes)
+        setContacts(contactsRes.results)
       })
       .catch(() => {
         setCompany(null)
@@ -29,6 +35,52 @@ export default function CompanyDetailPage() {
     () => user?.role === 'Admin' || user?.role === 'Manager' || user?.role === 'SystemAdmin',
     [user?.role],
   )
+  const canDelete = user?.role === 'Admin' || user?.role === 'SystemAdmin'
+
+  async function onCreateContact() {
+    if (!tokens?.access || !company) return
+    setSaving(true)
+    setError('')
+    try {
+      const created = await createContact(tokens.access, {
+        company: company.id,
+        full_name: contactName,
+        email: contactEmail,
+        phone: contactPhone,
+        role: contactRole,
+      })
+      setContacts((prev) => [created, ...prev])
+      setContactName('')
+      setContactEmail('')
+      setContactPhone('')
+      setContactRole('')
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to create contact.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function onDeleteContact(contactId: number) {
+    if (!tokens?.access) return
+    if (!window.confirm('Delete this contact?')) return
+    await deleteContact(tokens.access, contactId)
+    setContacts((prev) => prev.filter((item) => item.id !== contactId))
+  }
+
+  async function onQuickEdit(contact: Contact) {
+    if (!tokens?.access) return
+    const fullName = window.prompt('Full name', contact.full_name)
+    if (!fullName) return
+    const role = window.prompt('Role', contact.role)
+    if (!role) return
+    try {
+      const updated = await updateContact(tokens.access, contact.id, { full_name: fullName, role })
+      setContacts((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to update contact.')
+    }
+  }
 
   if (!company) {
     return (
@@ -74,8 +126,17 @@ export default function CompanyDetailPage() {
       <article className="panel table-wrap">
         <div className="panel-header-inline">
           <h3>Contacts</h3>
-          {canEdit && <button className="btn btn-secondary">Add Contact (UI)</button>}
+          {canEdit && <button className="btn btn-secondary" onClick={() => void onCreateContact()} disabled={saving || !contactName || !contactEmail || !contactRole}>Add Contact</button>}
         </div>
+        {canEdit && (
+          <div className="inline-actions" style={{ marginBottom: '0.8rem' }}>
+            <input placeholder="Full name" value={contactName} onChange={(event) => setContactName(event.target.value)} />
+            <input placeholder="Email" value={contactEmail} onChange={(event) => setContactEmail(event.target.value)} />
+            <input placeholder="Phone (optional)" value={contactPhone} onChange={(event) => setContactPhone(event.target.value)} />
+            <input placeholder="Role" value={contactRole} onChange={(event) => setContactRole(event.target.value)} />
+          </div>
+        )}
+        {error && <p className="form-error" style={{ marginBottom: '0.8rem' }}>{error}</p>}
         <table>
           <thead>
             <tr>
@@ -83,6 +144,7 @@ export default function CompanyDetailPage() {
               <th>Email</th>
               <th>Phone</th>
               <th>Role</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -92,11 +154,23 @@ export default function CompanyDetailPage() {
                 <td>{contact.email}</td>
                 <td>{contact.phone}</td>
                 <td>{contact.role}</td>
+                <td className="inline-actions">
+                  {canEdit && (
+                    <button type="button" className="table-link" onClick={() => void onQuickEdit(contact)}>
+                      Edit
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button type="button" className="table-link" onClick={() => void onDeleteContact(contact.id)}>
+                      Delete
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
             {!contacts.length && (
               <tr>
-                <td colSpan={4}>No contacts found for this company.</td>
+                <td colSpan={5}>No contacts found for this company.</td>
               </tr>
             )}
           </tbody>
