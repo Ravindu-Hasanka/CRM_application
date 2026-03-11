@@ -1,6 +1,6 @@
 import type { ActivityLog, AuthTokens, Company, Contact, UserProfile } from '../types'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api/v1'
 
 class ApiError extends Error {
   status: number
@@ -72,15 +72,18 @@ export async function getCurrentUser(accessToken: string): Promise<UserProfile> 
 }
 
 export async function getCompanies(accessToken: string): Promise<Company[]> {
-  return apiFetch<Company[]>('/companies', undefined, accessToken)
+  const payload = await apiFetch<Company[] | { results: Company[] }>('/companies', undefined, accessToken)
+  return Array.isArray(payload) ? payload : payload.results
 }
 
 export async function getContacts(accessToken: string): Promise<Contact[]> {
-  return apiFetch<Contact[]>('/contacts', undefined, accessToken)
+  const payload = await apiFetch<Contact[] | { results: Contact[] }>('/contacts', undefined, accessToken)
+  return Array.isArray(payload) ? payload : payload.results
 }
 
 export async function getActivityLogs(accessToken: string): Promise<ActivityLog[]> {
-  return apiFetch<ActivityLog[]>('/activity-logs', undefined, accessToken)
+  const payload = await apiFetch<ActivityLog[] | { results: ActivityLog[] }>('/activity-logs', undefined, accessToken)
+  return Array.isArray(payload) ? payload : payload.results
 }
 
 export async function createOrganization(

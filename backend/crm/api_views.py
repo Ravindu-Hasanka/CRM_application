@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework import generics, status, viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -184,6 +185,34 @@ class ActivityLogListView(OrganizationScopedQuerysetMixin, generics.ListAPIView)
     serializer_class = ActivityLogSerializer
     permission_classes = [IsAuthenticated, IsAdminOrManagerRole]
     organization_field = 'organization'
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        action_type = self.request.query_params.get('action_type')
+        model_name = self.request.query_params.get('model_name')
+        user_id = self.request.query_params.get('user_id')
+        date_from = self.request.query_params.get('date_from')
+        date_to = self.request.query_params.get('date_to')
+        search = self.request.query_params.get('search')
+
+        if action_type:
+            queryset = queryset.filter(action_type=action_type)
+        if model_name:
+            queryset = queryset.filter(model_name__iexact=model_name)
+        if user_id:
+            queryset = queryset.filter(user_id=user_id)
+        if date_from:
+            queryset = queryset.filter(timestamp__date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(timestamp__date__lte=date_to)
+        if search:
+            queryset = queryset.filter(
+                Q(model_name__icontains=search)
+                | Q(object_id__icontains=search)
+                | Q(action_type__icontains=search)
+            )
+
+        return queryset
     @extend_schema(tags=['Activity Logs'], summary='List activity logs (scoped by organization)')
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
@@ -194,6 +223,23 @@ class CompanyViewSet(OrganizationScopedQuerysetMixin, viewsets.ModelViewSet):
     serializer_class = CompanySerializer
     permission_classes = [IsAuthenticated, CompanyRBACPermission]
     organization_field = 'organization'
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        search = self.request.query_params.get('search')
+        industry = self.request.query_params.get('industry')
+        country = self.request.query_params.get('country')
+
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) | Q(industry__icontains=search) | Q(country__icontains=search)
+            )
+        if industry:
+            queryset = queryset.filter(industry__iexact=industry)
+        if country:
+            queryset = queryset.filter(country__iexact=country)
+
+        return queryset
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -227,6 +273,26 @@ class ContactViewSet(OrganizationScopedQuerysetMixin, viewsets.ModelViewSet):
     serializer_class = ContactSerializer
     permission_classes = [IsAuthenticated, ContactRBACPermission]
     organization_field = 'organization'
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        search = self.request.query_params.get('search')
+        company_id = self.request.query_params.get('company_id')
+        role = self.request.query_params.get('role')
+
+        if search:
+            queryset = queryset.filter(
+                Q(full_name__icontains=search)
+                | Q(email__icontains=search)
+                | Q(phone__icontains=search)
+                | Q(role__icontains=search)
+            )
+        if company_id:
+            queryset = queryset.filter(company_id=company_id)
+        if role:
+            queryset = queryset.filter(role__iexact=role)
+
+        return queryset
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
