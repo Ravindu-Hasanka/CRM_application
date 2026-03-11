@@ -5,14 +5,15 @@ import { FaStarOfLife } from 'react-icons/fa'
 
 import { ApiError } from '../../api/client'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 
 export default function LoginPage() {
   const { login, loading, isAuthenticated } = useAuth()
+  const { showToast } = useToast()
   const navigate = useNavigate()
   const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
 
   if (isAuthenticated) {
     return <Navigate to="/app/dashboard" replace />
@@ -20,14 +21,13 @@ export default function LoginPage() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setError('')
     try {
       await login(email, password)
       const redirectTo = (location.state as { from?: string } | null)?.from ?? '/app/dashboard'
       navigate(redirectTo, { replace: true })
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Login failed.'
-      setError(message)
+      showToast(message, 'error', 14000)
     }
   }
 
@@ -79,7 +79,6 @@ export default function LoginPage() {
               autoComplete="current-password"
             />
           </label>
-          {error && <p className="form-error">{error}</p>}
           <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
             {loading ? 'Signing in...' : 'Sign in to account'}
           </button>

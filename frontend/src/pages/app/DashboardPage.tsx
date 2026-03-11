@@ -4,12 +4,14 @@ import { FaBolt, FaBuilding, FaUsers } from 'react-icons/fa6'
 
 import { getActivityLogs, getCompanies, getContacts } from '../../api/client'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import type { ActivityLog, Company, Contact } from '../../types'
 
 const statIcons = [FaBuilding, FaUsers, FaBolt]
 
 export default function DashboardPage() {
   const { tokens, user } = useAuth()
+  const { showToast } = useToast()
   const [companies, setCompanies] = useState<Company[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
   const [logs, setLogs] = useState<ActivityLog[]>([])
@@ -30,6 +32,7 @@ export default function DashboardPage() {
         setCompanies([])
         setContacts([])
         setLogs([])
+        showToast('Failed to load dashboard data.', 'error', 14000)
       })
       .finally(() => {
         if (mounted) setLoading(false)
@@ -37,7 +40,7 @@ export default function DashboardPage() {
     return () => {
       mounted = false
     }
-  }, [tokens?.access])
+  }, [tokens?.access, showToast])
 
   const stats = useMemo(
     () => [

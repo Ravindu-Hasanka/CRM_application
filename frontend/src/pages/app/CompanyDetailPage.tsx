@@ -3,33 +3,41 @@ import { Link, useParams } from 'react-router-dom'
 import { FaCircle } from 'react-icons/fa'
 
 import { ApiError, createContact, deleteContact, getCompany, listContacts, updateContact } from '../../api/client'
+import LoadingState from '../../components/LoadingState'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import type { Company, Contact } from '../../types'
 
 export default function CompanyDetailPage() {
   const { id } = useParams()
   const { tokens, user } = useAuth()
+  const { showToast } = useToast()
   const [company, setCompany] = useState<Company | null>(null)
   const [contacts, setContacts] = useState<Contact[]>([])
   const [contactName, setContactName] = useState('')
   const [contactEmail, setContactEmail] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [contactRole, setContactRole] = useState('')
-  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!id || !tokens?.access) return
+    setLoading(true)
     Promise.all([getCompany(tokens.access, Number(id)), listContacts(tokens.access, { company_id: Number(id), page: 1 })])
       .then(([companyRes, contactsRes]) => {
         setCompany(companyRes)
         setContacts(contactsRes.results)
       })
-      .catch(() => {
+      .catch((err) => {
         setCompany(null)
         setContacts([])
+        showToast(err instanceof ApiError ? err.message : 'Failed to load company.', 'error', 14000)
       })
-  }, [id, tokens?.access])
+      .finally(() => {
+        setLoading(false)
+      })
+  }, [id, tokens?.access, showToast])
 
   const canEdit = useMemo(
     () => user?.role === 'Admin' || user?.role === 'Manager' || user?.role === 'SystemAdmin',
@@ -40,7 +48,6 @@ export default function CompanyDetailPage() {
   async function onCreateContact() {
     if (!tokens?.access || !company) return
     setSaving(true)
-    setError('')
     try {
       const created = await createContact(tokens.access, {
         company: company.id,
@@ -54,8 +61,9 @@ export default function CompanyDetailPage() {
       setContactEmail('')
       setContactPhone('')
       setContactRole('')
+      showToast('Contact created successfully.', 'success', 10000)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to create contact.')
+      showToast(err instanceof ApiError ? err.message : 'Failed to create contact.', 'error', 14000)
     } finally {
       setSaving(false)
     }
@@ -64,8 +72,13 @@ export default function CompanyDetailPage() {
   async function onDeleteContact(contactId: number) {
     if (!tokens?.access) return
     if (!window.confirm('Delete this contact?')) return
-    await deleteContact(tokens.access, contactId)
-    setContacts((prev) => prev.filter((item) => item.id !== contactId))
+    try {
+      await deleteContact(tokens.access, contactId)
+      setContacts((prev) => prev.filter((item) => item.id !== contactId))
+      showToast('Contact deleted successfully.', 'success', 10000)
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Failed to delete contact.', 'error', 14000)
+    }
   }
 
   async function onQuickEdit(contact: Contact) {
@@ -77,9 +90,18 @@ export default function CompanyDetailPage() {
     try {
       const updated = await updateContact(tokens.access, contact.id, { full_name: fullName, role })
       setContacts((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
+      showToast('Contact updated successfully.', 'success', 10000)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to update contact.')
+      showToast(err instanceof ApiError ? err.message : 'Failed to update contact.', 'error', 14000)
     }
+  }
+
+  if (loading) {
+    return (
+      <section className="panel">
+        <LoadingState label="Loading company details..." />
+      </section>
+    )
   }
 
   if (!company) {
@@ -136,7 +158,6 @@ export default function CompanyDetailPage() {
             <input placeholder="Role" value={contactRole} onChange={(event) => setContactRole(event.target.value)} />
           </div>
         )}
-        {error && <p className="form-error" style={{ marginBottom: '0.8rem' }}>{error}</p>}
         <table>
           <thead>
             <tr>

@@ -2,21 +2,25 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { ApiError, deleteCompany, listCompanies } from '../../api/client'
+import LoadingState from '../../components/LoadingState'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import type { Company } from '../../types'
 
 export default function CompaniesPage() {
   const pageSize = 10
   const { tokens, user } = useAuth()
+  const { showToast } = useToast()
   const [companies, setCompanies] = useState<Company[]>([])
   const [count, setCount] = useState(0)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [countryFilter, setCountryFilter] = useState('All')
-  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (!tokens?.access) return
+    setLoading(true)
     listCompanies(tokens.access, {
       page,
       search: search || undefined,
@@ -29,9 +33,12 @@ export default function CompaniesPage() {
       .catch((err) => {
         setCompanies([])
         setCount(0)
-        setError(err instanceof ApiError ? err.message : 'Failed to load companies.')
+        showToast(err instanceof ApiError ? err.message : 'Failed to load companies.', 'error', 14000)
       })
-  }, [tokens?.access, page, search, countryFilter])
+      .finally(() => {
+        setLoading(false)
+      })
+  }, [tokens?.access, page, search, countryFilter, showToast])
 
   const countries = useMemo(() => ['All', ...new Set(companies.map((company) => company.country))], [companies])
   const totalPages = Math.max(1, Math.ceil(count / pageSize))
@@ -53,14 +60,19 @@ export default function CompaniesPage() {
   async function onDelete(companyId: number) {
     if (!tokens?.access) return
     if (!window.confirm('Delete this company? It will be soft deleted.')) return
-    await deleteCompany(tokens.access, companyId)
-    setCompanies((prev) => prev.filter((item) => item.id !== companyId))
-    setCount((prev) => {
-      const nextCount = Math.max(0, prev - 1)
-      const nextTotalPages = Math.max(1, Math.ceil(nextCount / pageSize))
-      if (page > nextTotalPages) setPage(nextTotalPages)
-      return nextCount
-    })
+    try {
+      await deleteCompany(tokens.access, companyId)
+      setCompanies((prev) => prev.filter((item) => item.id !== companyId))
+      setCount((prev) => {
+        const nextCount = Math.max(0, prev - 1)
+        const nextTotalPages = Math.max(1, Math.ceil(nextCount / pageSize))
+        if (page > nextTotalPages) setPage(nextTotalPages)
+        return nextCount
+      })
+      showToast('Company deleted successfully.', 'success', 10000)
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Failed to delete company.', 'error', 14000)
+    }
   }
 
   return (
@@ -104,6 +116,10 @@ export default function CompaniesPage() {
       </div>
 
       <div className="panel table-wrap">
+        {loading ? (
+          <LoadingState label="Loading companies..." />
+        ) : (
+          <>
         <table>
           <thead>
             <tr>
@@ -159,7 +175,6 @@ export default function CompaniesPage() {
             )}
           </tbody>
         </table>
-        {error && <p className="form-error" style={{ marginTop: '0.75rem' }}>{error}</p>}
         <div className="table-footer">
           <span>
             {count > 0
@@ -180,6 +195,8 @@ export default function CompaniesPage() {
             </button>
           </div>
         </div>
+          </>
+        )}
       </div>
     </section>
   )

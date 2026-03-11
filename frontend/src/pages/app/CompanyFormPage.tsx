@@ -3,10 +3,13 @@ import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { ApiError, createCompany, getCompany, updateCompany } from '../../api/client'
+import LoadingState from '../../components/LoadingState'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 
 export default function CompanyFormPage() {
   const { tokens } = useAuth()
+  const { showToast } = useToast()
   const navigate = useNavigate()
   const { id } = useParams()
   const isEdit = useMemo(() => Boolean(id), [id])
@@ -14,11 +17,11 @@ export default function CompanyFormPage() {
   const [industry, setIndustry] = useState('')
   const [country, setCountry] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const [initialLoading, setInitialLoading] = useState(false)
 
   useEffect(() => {
     if (!tokens?.access || !isEdit || !id) return
+    setInitialLoading(true)
     void getCompany(tokens.access, Number(id))
       .then((company) => {
         setName(company.name)
@@ -26,30 +29,39 @@ export default function CompanyFormPage() {
         setCountry(company.country)
       })
       .catch((err) => {
-        setError(err instanceof ApiError ? err.message : 'Failed to load company details.')
+        showToast(err instanceof ApiError ? err.message : 'Failed to load company details.', 'error', 14000)
       })
-  }, [tokens?.access, isEdit, id])
+      .finally(() => {
+        setInitialLoading(false)
+      })
+  }, [tokens?.access, isEdit, id, showToast])
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!tokens?.access) return
     setLoading(true)
-    setError('')
-    setMessage('')
     try {
       if (isEdit && id) {
         await updateCompany(tokens.access, Number(id), { name, industry, country })
-        setMessage('Company updated successfully.')
+        showToast('Company updated successfully.', 'success', 10000)
       } else {
         await createCompany(tokens.access, { name, industry, country })
-        setMessage('Company created successfully.')
+        showToast('Company created successfully.', 'success', 10000)
       }
       setTimeout(() => navigate('/app/companies'), 600)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to save company.')
+      showToast(err instanceof ApiError ? err.message : 'Failed to save company.', 'error', 14000)
     } finally {
       setLoading(false)
     }
+  }
+
+  if (initialLoading) {
+    return (
+      <section className="panel form-panel">
+        <LoadingState label="Loading company data..." />
+      </section>
+    )
   }
 
   return (
@@ -76,8 +88,6 @@ export default function CompanyFormPage() {
           <input type="file" disabled />
         </label>
         <p className="muted">Logo upload will be connected after S3 integration stage.</p>
-        {error && <p className="form-error">{error}</p>}
-        {message && <p className="form-success">{message}</p>}
         <div className="inline-actions">
           <button type="submit" className="btn btn-primary" disabled={loading}>
             {loading ? 'Saving...' : 'Save'}

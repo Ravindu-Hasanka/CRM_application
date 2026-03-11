@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { ApiError, createUser, listUsers } from '../../api/client'
+import LoadingState from '../../components/LoadingState'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import type { UserProfile, UserRole } from '../../types'
 
 export default function UsersPage() {
   const { tokens, user } = useAuth()
+  const { showToast } = useToast()
   const [users, setUsers] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
 
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
@@ -27,12 +28,11 @@ export default function UsersPage() {
   async function loadUsers() {
     if (!tokens?.access) return
     setLoading(true)
-    setError('')
     try {
       const payload = await listUsers(tokens.access)
       setUsers(payload)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load users.')
+      showToast(err instanceof ApiError ? err.message : 'Failed to load users.', 'error', 14000)
     } finally {
       setLoading(false)
     }
@@ -46,8 +46,6 @@ export default function UsersPage() {
     event.preventDefault()
     if (!tokens?.access) return
     setSubmitting(true)
-    setError('')
-    setSuccess('')
     try {
       const created = await createUser(tokens.access, {
         email,
@@ -62,9 +60,9 @@ export default function UsersPage() {
       setPassword('')
       setRole(allowedRoles[0] ?? 'Staff')
       setIsActive(true)
-      setSuccess('User created successfully.')
+      showToast('User created successfully.', 'success', 10000)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to create user.')
+      showToast(err instanceof ApiError ? err.message : 'Failed to create user.', 'error', 14000)
     } finally {
       setSubmitting(false)
     }
@@ -132,14 +130,12 @@ export default function UsersPage() {
             </button>
           </div>
         </form>
-        {error && <p className="form-error" style={{ marginTop: '0.75rem' }}>{error}</p>}
-        {success && <p style={{ marginTop: '0.75rem', color: 'var(--success)' }}>{success}</p>}
       </div>
 
       <div className="panel table-wrap">
         <h3 style={{ marginBottom: '0.75rem' }}>Members</h3>
         {loading ? (
-          <p>Loading users...</p>
+          <LoadingState label="Loading team members..." />
         ) : (
           <table>
             <thead>
@@ -173,4 +169,3 @@ export default function UsersPage() {
     </section>
   )
 }
-

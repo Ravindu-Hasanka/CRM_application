@@ -3,10 +3,12 @@ import type { FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { ApiError, createOrganization } from '../../api/client'
+import { useToast } from '../../contexts/ToastContext'
 import type { RegistrationDraft, SubscriptionPlan } from '../../types'
 
 export default function RegisterOrganizationPage() {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [searchParams] = useSearchParams()
   const selectedPlan = useMemo<SubscriptionPlan>(() => (searchParams.get('plan') === 'Pro' ? 'Pro' : 'Basic'), [searchParams])
 
@@ -16,13 +18,11 @@ export default function RegisterOrganizationPage() {
   const [adminPassword, setAdminPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setError('')
     if (adminPassword !== confirmPassword) {
-      setError('Password confirmation does not match.')
+      showToast('Password confirmation does not match.', 'error', 12000)
       return
     }
 
@@ -42,10 +42,11 @@ export default function RegisterOrganizationPage() {
         admin_password: adminPassword,
         admin_username: adminUsername || undefined,
       })
+      showToast('Organization registered successfully.', 'success', 10000)
       navigate('/register/success', { state: draft, replace: true })
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Registration failed. Please try again.'
-      setError(message)
+      showToast(message, 'error', 14000)
     } finally {
       setLoading(false)
     }
@@ -134,7 +135,6 @@ export default function RegisterOrganizationPage() {
             onChange={(event) => setConfirmPassword(event.target.value)}
           />
         </label>
-        {error && <p className="form-error">{error}</p>}
         <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
           {loading ? 'Submitting...' : 'Create Account & Start Trial'}
         </button>

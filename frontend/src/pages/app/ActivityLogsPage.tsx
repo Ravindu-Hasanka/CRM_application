@@ -1,21 +1,26 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { ApiError, listActivityLogs } from '../../api/client'
+import LoadingState from '../../components/LoadingState'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import type { ActivityLog } from '../../types'
 
 export default function ActivityLogsPage() {
+  const pageSize = 10
   const { tokens } = useAuth()
+  const { showToast } = useToast()
   const [logs, setLogs] = useState<ActivityLog[]>([])
   const [count, setCount] = useState(0)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [actionFilter, setActionFilter] = useState<'ALL' | 'CREATE' | 'UPDATE' | 'DELETE'>('ALL')
   const [modelFilter, setModelFilter] = useState('ALL')
-  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (!tokens?.access) return
+    setLoading(true)
     listActivityLogs(tokens.access, {
       page,
       search: search || undefined,
@@ -29,11 +34,24 @@ export default function ActivityLogsPage() {
       .catch((err) => {
         setLogs([])
         setCount(0)
-        setError(err instanceof ApiError ? err.message : 'Failed to load activity logs.')
+        showToast(err instanceof ApiError ? err.message : 'Failed to load activity logs.', 'error', 14000)
       })
-  }, [tokens?.access, page, search, actionFilter, modelFilter])
+      .finally(() => {
+        setLoading(false)
+      })
+  }, [tokens?.access, page, search, actionFilter, modelFilter, showToast])
 
   const models = useMemo(() => ['ALL', ...new Set(logs.map((log) => log.model_name))], [logs])
+  const totalPages = Math.max(1, Math.ceil(count / pageSize))
+  const visiblePages = useMemo(() => {
+    const maxVisible = 5
+    let start = Math.max(1, page - Math.floor(maxVisible / 2))
+    let end = Math.min(totalPages, start + maxVisible - 1)
+    if (end - start + 1 < maxVisible) start = Math.max(1, end - maxVisible + 1)
+    const pages: number[] = []
+    for (let p = start; p <= end; p += 1) pages.push(p)
+    return pages
+  }, [page, totalPages])
 
   return (
     <section className="content-stack">
@@ -77,6 +95,10 @@ export default function ActivityLogsPage() {
         </select>
       </div>
       <div className="panel table-wrap">
+        {loading ? (
+          <LoadingState label="Loading activity logs..." />
+        ) : (
+          <>
         <table>
           <thead>
             <tr>
@@ -106,25 +128,28 @@ export default function ActivityLogsPage() {
             )}
           </tbody>
         </table>
-        {error && <p className="form-error" style={{ marginTop: '0.75rem' }}>{error}</p>}
         <div className="table-footer">
           <span>
             {count > 0
-              ? `Showing ${(page - 1) * 10 + 1} to ${Math.min(page * 10, count)} of ${count} entries`
+              ? `Showing ${(page - 1) * pageSize + 1} to ${Math.min(page * pageSize, count)} of ${count} entries`
               : 'Showing 0 entries'}
           </span>
           <div className="inline-actions">
-            <button className={`chip ${page === 1 ? 'active' : ''}`} onClick={() => setPage(1)}>
-              1
+            <button type="button" className="chip" disabled={page === 1} onClick={() => setPage(page - 1)}>
+              Prev
             </button>
-            <button className={`chip ${page === 2 ? 'active' : ''}`} onClick={() => setPage(2)}>
-              2
-            </button>
-            <button className={`chip ${page === 3 ? 'active' : ''}`} onClick={() => setPage(3)}>
-              3
+            {visiblePages.map((p) => (
+              <button key={p} type="button" className={`chip ${page === p ? 'active' : ''}`} onClick={() => setPage(p)}>
+                {p}
+              </button>
+            ))}
+            <button type="button" className="chip" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+              Next
             </button>
           </div>
         </div>
+          </>
+        )}
       </div>
     </section>
   )

@@ -80,6 +80,82 @@ a {
   width: 100%;
 }
 
+.loading-state {
+  min-height: 140px;
+  display: grid;
+  place-items: center;
+  gap: 0.7rem;
+  color: #587090;
+}
+
+.loading-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 3px solid #d5e4fa;
+  border-top-color: var(--primary);
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.toast-stack {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 80;
+  display: grid;
+  gap: 0.65rem;
+  width: min(360px, calc(100vw - 2rem));
+}
+
+.toast {
+  border-radius: 12px;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.2);
+  padding: 0.8rem 0.9rem;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.7rem;
+  background: #fff;
+}
+
+.toast-success {
+  border-color: #bde9d5;
+  background: #effbf4;
+}
+
+.toast-error {
+  border-color: #f7c5cb;
+  background: #fff0f2;
+}
+
+.toast-info {
+  border-color: #cfe0fa;
+  background: #f2f7ff;
+}
+
+.toast p {
+  margin: 0;
+  color: #1b2f4d;
+  line-height: 1.35;
+}
+
+.toast-close {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: #5e7394;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0.1rem;
+}
+
 .badge {
   display: inline-flex;
   border-radius: 999px;
