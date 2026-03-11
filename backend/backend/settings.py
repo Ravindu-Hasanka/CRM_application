@@ -11,11 +11,29 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _load_local_env() -> None:
+    env_path = BASE_DIR / '.env'
+    if not env_path.exists():
+        return
+    for raw_line in env_path.read_text().splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        os.environ.setdefault(key, value)
+
+
+_load_local_env()
 
 
 # Quick-start development settings - unsuitable for production
@@ -39,7 +57,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'crm',
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'drf_spectacular',
+    'crm.apps.CrmConfig',
 ]
 
 MIDDLEWARE = [
@@ -89,6 +110,7 @@ def _database_config_from_url(database_url: str) -> dict:
 
     query_params = {k: v[-1] for k, v in parse_qs(parsed.query).items() if v}
     conn_max_age = int(query_params.pop('conn_max_age', os.getenv('POSTGRES_CONN_MAX_AGE', '60')))
+    connect_timeout = query_params.pop('connect_timeout', os.getenv('POSTGRES_CONNECT_TIMEOUT', '5'))
 
     config = {
         'ENGINE': engine,
@@ -98,9 +120,10 @@ def _database_config_from_url(database_url: str) -> dict:
         'HOST': parsed.hostname or '',
         'PORT': str(parsed.port or ''),
         'CONN_MAX_AGE': conn_max_age,
+        'OPTIONS': {'connect_timeout': str(connect_timeout)},
     }
     if query_params:
-        config['OPTIONS'] = query_params
+        config['OPTIONS'].update(query_params)
     return config
 
 default_database = {
@@ -111,6 +134,9 @@ default_database = {
     'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
     'PORT': os.getenv('POSTGRES_PORT', '5432'),
     'CONN_MAX_AGE': int(os.getenv('POSTGRES_CONN_MAX_AGE', '60')),
+    'OPTIONS': {
+        'connect_timeout': os.getenv('POSTGRES_CONNECT_TIMEOUT', '5'),
+    },
 }
 
 database_url = os.getenv('DATABASE_URL')
@@ -120,6 +146,32 @@ if database_url:
 DATABASES = {'default': default_database}
 
 AUTH_USER_MODEL = 'crm.User'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'CRM Backend API',
+    'DESCRIPTION': 'Role-based multi-tenant CRM backend APIs',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SWAGGER_UI_SETTINGS': {
+        'persistAuthorization': True,
+    },
+}
 
 
 # Password validation

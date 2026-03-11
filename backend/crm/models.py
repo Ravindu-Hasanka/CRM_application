@@ -1,6 +1,7 @@
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.db import models
+from django.db.models import Q
 
 
 class TimeStampedModel(models.Model):
@@ -33,6 +34,12 @@ class UserManager(BaseUserManager):
         if not email:
             raise ValueError('The Email field must be set.')
         email = self.normalize_email(email)
+        role = extra_fields.get('role', User.Role.STAFF)
+        organization = extra_fields.get('organization')
+        if role == User.Role.SYSTEM_ADMIN and organization is not None:
+            raise ValueError('System admin cannot be attached to an organization.')
+        if role != User.Role.SYSTEM_ADMIN and organization is None:
+            raise ValueError('Non-system users must belong to an organization.')
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
@@ -41,9 +48,8 @@ class UserManager(BaseUserManager):
     def create_superuser(self, email: str, password: str | None = None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('role', User.Role.ADMIN)
-        if not extra_fields.get('organization'):
-            raise ValueError('Superuser must have an organization.')
+        extra_fields.setdefault('role', User.Role.SYSTEM_ADMIN)
+        extra_fields.setdefault('organization', None)
 
         if extra_fields.get('is_staff') is not True:
             raise ValueError('Superuser must have is_staff=True.')
@@ -55,6 +61,7 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
+        SYSTEM_ADMIN = 'SystemAdmin', 'SystemAdmin'
         ADMIN = 'Admin', 'Admin'
         MANAGER = 'Manager', 'Manager'
         STAFF = 'Staff', 'Staff'
@@ -63,6 +70,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         Organization,
         on_delete=models.PROTECT,
         related_name='users',
+        null=True,
+        blank=True,
     )
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=150, unique=True, null=True, blank=True)
@@ -72,9 +81,20 @@ class User(AbstractBaseUser, PermissionsMixin):
     created_at = models.DateTimeField(auto_now_add=True)
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS: list[str] = ['organization']
+    REQUIRED_FIELDS: list[str] = []
 
     objects = UserManager()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    (Q(role='SystemAdmin') & Q(organization__isnull=True))
+                    | (~Q(role='SystemAdmin') & Q(organization__isnull=False))
+                ),
+                name='crm_user_org_required_by_role',
+            )
+        ]
 
     def __str__(self) -> str:
         return self.email

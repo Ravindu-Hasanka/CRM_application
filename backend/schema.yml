@@ -1,0 +1,507 @@
+openapi: 3.0.3
+info:
+  title: CRM Backend API
+  version: 1.0.0
+  description: Role-based multi-tenant CRM backend APIs
+paths:
+  /api/activity-logs/:
+    get:
+      operationId: activity_logs_list
+      summary: List activity logs (scoped by organization)
+      tags:
+      - Activity Logs
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ActivityLog'
+          description: ''
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      summary: Login and get JWT tokens
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CRMTokenObtainPair'
+            examples:
+              LoginRequest:
+                value:
+                  email: admin@acme.com
+                  password: AdminPass123!
+                summary: Login request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CRMTokenObtainPair'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CRMTokenObtainPair'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CRMTokenObtainPair'
+              examples:
+                LoginResponse:
+                  value:
+                    refresh: <refresh_token>
+                    access: <access_token>
+                  summary: Login response
+          description: ''
+  /api/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      summary: Get current authenticated user
+      tags:
+      - Auth
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMe'
+          description: ''
+  /api/auth/refresh/:
+    post:
+      operationId: auth_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/companies/:
+    get:
+      operationId: companies_list
+      summary: List companies (scoped by organization)
+      tags:
+      - Companies
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Company'
+          description: ''
+  /api/contacts/:
+    get:
+      operationId: contacts_list
+      summary: List contacts (scoped by organization)
+      tags:
+      - Contacts
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Contact'
+          description: ''
+  /api/platform/organizations/:
+    post:
+      operationId: platform_organizations_create
+      summary: Create organization with its first Admin
+      tags:
+      - Platform
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationCreate'
+            examples:
+              OrganizationOnboarding:
+                value:
+                  name: Acme Ltd
+                  subscription_plan: Pro
+                  admin_email: org.admin@acme.com
+                  admin_password: StrongPass123!
+                  admin_username: acme-admin
+                summary: Organization onboarding
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrganizationCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrganizationCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationCreate'
+          description: ''
+  /api/users/:
+    post:
+      operationId: users_create
+      summary: Create user (role-based)
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+            examples:
+              CreateStaffUser:
+                value:
+                  email: staff1@acme.com
+                  username: staff1
+                  password: StrongPass123!
+                  organization: 1
+                  role: Staff
+                  is_active: true
+                summary: Create staff user
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserCreate'
+          description: ''
+  /api/users/list/:
+    get:
+      operationId: users_list_list
+      summary: List users (scoped by organization)
+      tags:
+      - Users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserMe'
+          description: ''
+components:
+  schemas:
+    ActionTypeEnum:
+      enum:
+      - CREATE
+      - UPDATE
+      - DELETE
+      type: string
+      description: |-
+        * `CREATE` - CREATE
+        * `UPDATE` - UPDATE
+        * `DELETE` - DELETE
+    ActivityLog:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        organization_id:
+          type: integer
+          readOnly: true
+        user_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        action_type:
+          $ref: '#/components/schemas/ActionTypeEnum'
+        model_name:
+          type: string
+          maxLength: 120
+        object_id:
+          type: string
+          maxLength: 64
+        timestamp:
+          type: string
+          format: date-time
+          readOnly: true
+        metadata:
+          nullable: true
+      required:
+      - action_type
+      - id
+      - model_name
+      - object_id
+      - organization_id
+      - timestamp
+      - user_id
+    CRMTokenObtainPair:
+      type: object
+      properties:
+        email:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - email
+      - password
+    Company:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        organization_id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        industry:
+          type: string
+          maxLength: 120
+        country:
+          type: string
+          maxLength: 120
+        logo:
+          type: string
+          format: uri
+          nullable: true
+        is_deleted:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - country
+      - created_at
+      - id
+      - industry
+      - name
+      - organization_id
+      - updated_at
+    Contact:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        organization_id:
+          type: integer
+          readOnly: true
+        company_id:
+          type: integer
+          readOnly: true
+        full_name:
+          type: string
+          maxLength: 255
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 50
+        role:
+          type: string
+          maxLength: 120
+        is_deleted:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - company_id
+      - created_at
+      - email
+      - full_name
+      - id
+      - organization_id
+      - phone
+      - role
+      - updated_at
+    OrganizationCreate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        subscription_plan:
+          $ref: '#/components/schemas/SubscriptionPlanEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        admin_email:
+          type: string
+          format: email
+          writeOnly: true
+        admin_password:
+          type: string
+          writeOnly: true
+          minLength: 8
+        admin_username:
+          type: string
+          writeOnly: true
+      required:
+      - admin_email
+      - admin_password
+      - created_at
+      - id
+      - name
+    RoleEnum:
+      enum:
+      - SystemAdmin
+      - Admin
+      - Manager
+      - Staff
+      type: string
+      description: |-
+        * `SystemAdmin` - SystemAdmin
+        * `Admin` - Admin
+        * `Manager` - Manager
+        * `Staff` - Staff
+    SubscriptionPlanEnum:
+      enum:
+      - Basic
+      - Pro
+      type: string
+      description: |-
+        * `Basic` - Basic
+        * `Pro` - Pro
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          writeOnly: true
+      required:
+      - access
+      - refresh
+    UserCreate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        username:
+          type: string
+          nullable: true
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 8
+        organization:
+          type: integer
+          nullable: true
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - email
+      - id
+      - password
+    UserMe:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        username:
+          type: string
+          nullable: true
+          maxLength: 150
+        organization_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - email
+      - id
+      - organization_id
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
