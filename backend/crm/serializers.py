@@ -185,15 +185,21 @@ class ContactSerializer(serializers.ModelSerializer):
 
 
 class ActivityLogSerializer(serializers.ModelSerializer):
+    user_email = serializers.SerializerMethodField()
+
     class Meta:
         model = ActivityLog
         fields = (
             'id',
             'organization_id',
             'user_id',
+            'user_email',
             'action_type',
             'model_name',
             'object_id',
             'timestamp',
             'metadata',
         )
+
+    def get_user_email(self, obj):
+        return obj.user.email if obj.user else None

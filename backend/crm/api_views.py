@@ -19,20 +19,9 @@ from .serializers import (
     UserCreateSerializer,
     UserMeSerializer,
 )
+from .services.audit import log_model_action
 
 UserModel = get_user_model()
-
-
-def _create_activity_log(*, request, action_type: str, instance, metadata: dict | None = None):
-    user = request.user
-    ActivityLog.objects.create(
-        organization=instance.organization,
-        user=user if user.is_authenticated else None,
-        action_type=action_type,
-        model_name=instance.__class__.__name__,
-        object_id=str(instance.pk),
-        metadata=metadata or {},
-    )
 
 
 class LoginView(TokenObtainPairView):
@@ -180,7 +169,7 @@ class OrganizationCreateView(generics.CreateAPIView):
         return super().post(request, *args, **kwargs)
 
 
-class ActivityLogListView(OrganizationScopedQuerysetMixin, generics.ListAPIView):
+class ActivityLogViewSet(OrganizationScopedQuerysetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = ActivityLog.objects.select_related('user').order_by('-timestamp')
     serializer_class = ActivityLogSerializer
     permission_classes = [IsAuthenticated, IsAdminOrManagerRole]
@@ -214,8 +203,12 @@ class ActivityLogListView(OrganizationScopedQuerysetMixin, generics.ListAPIView)
 
         return queryset
     @extend_schema(tags=['Activity Logs'], summary='List activity logs (scoped by organization)')
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=['Activity Logs'], summary='Get audit log entry detail')
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
 
 
 class CompanyViewSet(OrganizationScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -248,12 +241,12 @@ class CompanyViewSet(OrganizationScopedQuerysetMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        _create_activity_log(request=self.request, action_type=ActivityLog.ActionType.CREATE, instance=instance)
+        log_model_action(user=self.request.user, action_type=ActivityLog.ActionType.CREATE, instance=instance)
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        _create_activity_log(
-            request=self.request,
+        log_model_action(
+            user=self.request.user,
             action_type=ActivityLog.ActionType.UPDATE,
             instance=instance,
             metadata={'updated_fields': list(serializer.validated_data.keys())},
@@ -264,7 +257,7 @@ class CompanyViewSet(OrganizationScopedQuerysetMixin, viewsets.ModelViewSet):
         self.check_object_permissions(request, instance)
         instance.is_deleted = True
         instance.save(update_fields=['is_deleted', 'updated_at'])
-        _create_activity_log(request=request, action_type=ActivityLog.ActionType.DELETE, instance=instance)
+        log_model_action(user=request.user, action_type=ActivityLog.ActionType.DELETE, instance=instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -301,12 +294,12 @@ class ContactViewSet(OrganizationScopedQuerysetMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        _create_activity_log(request=self.request, action_type=ActivityLog.ActionType.CREATE, instance=instance)
+        log_model_action(user=self.request.user, action_type=ActivityLog.ActionType.CREATE, instance=instance)
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        _create_activity_log(
-            request=self.request,
+        log_model_action(
+            user=self.request.user,
             action_type=ActivityLog.ActionType.UPDATE,
             instance=instance,
             metadata={'updated_fields': list(serializer.validated_data.keys())},
@@ -317,5 +310,5 @@ class ContactViewSet(OrganizationScopedQuerysetMixin, viewsets.ModelViewSet):
         self.check_object_permissions(request, instance)
         instance.is_deleted = True
         instance.save(update_fields=['is_deleted', 'updated_at'])
-        _create_activity_log(request=request, action_type=ActivityLog.ActionType.DELETE, instance=instance)
+        log_model_action(user=request.user, action_type=ActivityLog.ActionType.DELETE, instance=instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
