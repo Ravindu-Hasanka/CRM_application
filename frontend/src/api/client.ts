@@ -1,4 +1,5 @@
-import type { ActivityLog, AuthTokens, Company, Contact, UserProfile } from '../types'
+import type { ActivityLog, AuthTokens, Company, Contact, UserProfile, UserRole } from '../types'
+import { clearTokens, clearUser, loadTokens, saveTokens } from '../utils/authStorage'
 
 const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api/v1'
 const API_BASE_URL = RAW_API_BASE_URL.endsWith('/') ? RAW_API_BASE_URL.slice(0, -1) : RAW_API_BASE_URL
@@ -40,16 +41,50 @@ function normalizePath(path: string): string {
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit, accessToken?: string): Promise<T> {
-  const headers = new Headers(init?.headers ?? {})
-  headers.set('Content-Type', 'application/json')
-  if (accessToken) {
-    headers.set('Authorization', `Bearer ${accessToken}`)
+  const storedTokens = loadTokens()
+  let effectiveAccessToken = accessToken
+  if (storedTokens?.access && accessToken && storedTokens.access !== accessToken) {
+    effectiveAccessToken = storedTokens.access
   }
 
-  const response = await fetch(`${API_BASE_URL}${normalizePath(path)}`, {
+  const headers = new Headers(init?.headers ?? {})
+  headers.set('Content-Type', 'application/json')
+  if (effectiveAccessToken) {
+    headers.set('Authorization', `Bearer ${effectiveAccessToken}`)
+  }
+
+  let response = await fetch(`${API_BASE_URL}${normalizePath(path)}`, {
     ...init,
     headers,
   })
+
+  if (response.status === 401 && effectiveAccessToken && storedTokens?.refresh) {
+    const refreshResponse = await fetch(`${API_BASE_URL}${normalizePath('/auth/refresh')}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refresh: storedTokens.refresh }),
+    })
+
+    if (refreshResponse.ok) {
+      const refreshed = (await refreshResponse.json()) as { access: string }
+      const nextTokens: AuthTokens = { ...storedTokens, access: refreshed.access }
+      saveTokens(nextTokens)
+
+      const retryHeaders = new Headers(init?.headers ?? {})
+      retryHeaders.set('Content-Type', 'application/json')
+      retryHeaders.set('Authorization', `Bearer ${nextTokens.access}`)
+
+      response = await fetch(`${API_BASE_URL}${normalizePath(path)}`, {
+        ...init,
+        headers: retryHeaders,
+      })
+    } else {
+      clearTokens()
+      clearUser()
+    }
+  }
 
   if (!response.ok) {
     let detail = `Request failed with status ${response.status}`
@@ -210,6 +245,27 @@ export async function createOrganization(
     method: 'POST',
     body: JSON.stringify(payload),
   })
+}
+
+export async function listUsers(accessToken: string): Promise<UserProfile[]> {
+  const payload = await apiFetch<UserProfile[] | PaginatedResponse<UserProfile>>('/users/list', undefined, accessToken)
+  return Array.isArray(payload) ? payload : payload.results
+}
+
+export async function createUser(
+  accessToken: string,
+  payload: {
+    email: string
+    username?: string
+    password: string
+    role: UserRole
+    is_active?: boolean
+  },
+): Promise<UserProfile> {
+  return apiFetch<UserProfile>('/users', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }, accessToken)
 }
 
 export { ApiError }

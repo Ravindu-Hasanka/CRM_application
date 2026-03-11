@@ -9,6 +9,7 @@ import CompanyDetailPage from './pages/app/CompanyDetailPage'
 import CompanyFormPage from './pages/app/CompanyFormPage'
 import DashboardPage from './pages/app/DashboardPage'
 import ProfilePage from './pages/app/ProfilePage'
+import UsersPage from './pages/app/UsersPage'
 import NotFoundPage from './pages/public/NotFoundPage'
 import LandingPage from './pages/public/LandingPage'
 import LoginPage from './pages/public/LoginPage'
@@ -54,6 +55,12 @@ function App() {
             element={<ProtectedRoute allowedRoles={['SystemAdmin', 'Admin', 'Manager']} />}
           >
             <Route index element={<ActivityLogsPage />} />
+          </Route>
+          <Route
+            path="users"
+            element={<ProtectedRoute allowedRoles={['SystemAdmin', 'Admin', 'Manager']} />}
+          >
+            <Route index element={<UsersPage />} />
           </Route>
           <Route path="profile" element={<ProfilePage />} />
         </Route>

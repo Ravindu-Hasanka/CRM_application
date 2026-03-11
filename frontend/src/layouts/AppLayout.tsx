@@ -1,6 +1,6 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { FaBuilding, FaRegCircleUser } from 'react-icons/fa6'
-import { FiActivity, FiBarChart2, FiGrid, FiLogOut } from 'react-icons/fi'
+import { FiActivity, FiBarChart2, FiGrid, FiLogOut, FiUsers } from 'react-icons/fi'
 
 import RoleBadge from '../components/RoleBadge'
 import { useAuth } from '../contexts/AuthContext'
@@ -9,12 +9,19 @@ const BASE_ITEMS = [
   { label: 'Dashboard', to: '/app/dashboard', icon: FiGrid },
   { label: 'Companies', to: '/app/companies', icon: FaBuilding },
   { label: 'Activity Logs', to: '/app/activity-logs', icon: FiActivity },
+  { label: 'Team Members', to: '/app/users', icon: FiUsers },
   { label: 'Profile', to: '/app/profile', icon: FaRegCircleUser },
 ]
 
 export default function AppLayout() {
   const { user, logout } = useAuth()
   const role = user?.role ?? 'Staff'
+  const menuItems = BASE_ITEMS.filter((item) => {
+    if (item.to === '/app/activity-logs' || item.to === '/app/users') {
+      return role === 'SystemAdmin' || role === 'Admin' || role === 'Manager'
+    }
+    return true
+  })
 
   return (
     <div className="app-shell">
@@ -28,7 +35,7 @@ export default function AppLayout() {
         <p className="sidebar-version">v1.0.2 - Enterprise</p>
 
         <nav className="app-menu">
-          {BASE_ITEMS.map((item) => {
+          {menuItems.map((item) => {
             const Icon = item.icon
             return (
               <NavLink key={item.to} to={item.to} className={({ isActive }) => `menu-link ${isActive ? 'active' : ''}`}>

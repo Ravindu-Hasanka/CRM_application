@@ -37,6 +37,11 @@ class UserCreateSerializer(serializers.ModelSerializer):
         target_role = attrs.get('role', User.Role.STAFF)
         target_org = attrs.get('organization')
 
+        # For organization-scoped actors, default to their own org when omitted.
+        if actor.role in {User.Role.ADMIN, User.Role.MANAGER} and target_org is None:
+            attrs['organization'] = actor.organization
+            target_org = actor.organization
+
         if actor.role != User.Role.SYSTEM_ADMIN and target_role == User.Role.SYSTEM_ADMIN:
             raise serializers.ValidationError('Only system admin can create system admins.')
 
