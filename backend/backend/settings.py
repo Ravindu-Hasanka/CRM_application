@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'crm',
 ]
 
 MIDDLEWARE = [
@@ -102,8 +103,6 @@ def _database_config_from_url(database_url: str) -> dict:
         config['OPTIONS'] = query_params
     return config
 
-
-
 default_database = {
     'ENGINE': 'django.db.backends.postgresql',
     'NAME': os.getenv('POSTGRES_DB', 'crm_db'),
@@ -112,9 +111,15 @@ default_database = {
     'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
     'PORT': os.getenv('POSTGRES_PORT', '5432'),
     'CONN_MAX_AGE': int(os.getenv('POSTGRES_CONN_MAX_AGE', '60')),
-    }
+}
+
+database_url = os.getenv('DATABASE_URL')
+if database_url:
+    default_database = _database_config_from_url(database_url)
 
 DATABASES = {'default': default_database}
+
+AUTH_USER_MODEL = 'crm.User'
 
 
 # Password validation
