@@ -10,7 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlparse
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -72,12 +74,47 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+
+def _database_config_from_url(database_url: str) -> dict:
+    parsed = urlparse(database_url)
+    engine_map = {
+        'postgres': 'django.db.backends.postgresql',
+        'postgresql': 'django.db.backends.postgresql',
+        'pgsql': 'django.db.backends.postgresql',
     }
-}
+    engine = engine_map.get(parsed.scheme)
+    if not engine:
+        raise ValueError(f"Unsupported DATABASE_URL scheme: {parsed.scheme}")
+
+    query_params = {k: v[-1] for k, v in parse_qs(parsed.query).items() if v}
+    conn_max_age = int(query_params.pop('conn_max_age', os.getenv('POSTGRES_CONN_MAX_AGE', '60')))
+
+    config = {
+        'ENGINE': engine,
+        'NAME': unquote(parsed.path.lstrip('/')),
+        'USER': unquote(parsed.username or ''),
+        'PASSWORD': unquote(parsed.password or ''),
+        'HOST': parsed.hostname or '',
+        'PORT': str(parsed.port or ''),
+        'CONN_MAX_AGE': conn_max_age,
+    }
+    if query_params:
+        config['OPTIONS'] = query_params
+    return config
+
+
+
+default_database = {
+    'ENGINE': 'django.db.backends.postgresql',
+    'NAME': os.getenv('POSTGRES_DB', 'crm_db'),
+    'USER': os.getenv('POSTGRES_USER', 'postgres'),
+    'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'postgres'),
+    'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
+    'PORT': os.getenv('POSTGRES_PORT', '5432'),
+    'CONN_MAX_AGE': int(os.getenv('POSTGRES_CONN_MAX_AGE', '60')),
+    }
+
+DATABASES = {'default': default_database}
 
 
 # Password validation

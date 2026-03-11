@@ -1,0 +1,30 @@
+.env
+.env.*
+!.env.example
+
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Django and local databases
+db.sqlite3
+*.sqlite3
+
+# Static/media artifacts (if collected/generated locally)
+staticfiles/
+media/
+
+# Tooling and test artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
