@@ -27,7 +27,19 @@ async function apiFetch<T>(path: string, init?: RequestInit, accessToken?: strin
     let detail = `Request failed with status ${response.status}`
     try {
       const payload = await response.json()
-      if (payload?.detail) detail = payload.detail
+      if (payload?.detail) {
+        detail = payload.detail
+      } else if (typeof payload === 'object' && payload !== null) {
+        const firstEntry = Object.entries(payload)[0]
+        if (firstEntry) {
+          const [field, value] = firstEntry
+          if (Array.isArray(value) && value.length) {
+            detail = `${field}: ${String(value[0])}`
+          } else {
+            detail = `${field}: ${String(value)}`
+          }
+        }
+      }
     } catch {
       // Ignore JSON parsing errors and keep fallback detail.
     }
@@ -79,12 +91,11 @@ export async function createOrganization(
     admin_password: string
     admin_username?: string
   },
-  accessToken: string,
 ): Promise<void> {
-  await apiFetch('/platform/organizations', {
+  await apiFetch('/auth/register-organization', {
     method: 'POST',
     body: JSON.stringify(payload),
-  }, accessToken)
+  })
 }
 
 export { ApiError }

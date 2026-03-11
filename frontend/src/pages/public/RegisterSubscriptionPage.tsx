@@ -45,9 +45,7 @@ export default function RegisterSubscriptionPage() {
               {plan === 'Basic' ? '$0' : '$29'} <span>/month</span>
             </p>
             <p>{plan === 'Basic' ? 'Perfect for individuals and small side projects.' : 'Advanced tools for growing teams and startups.'}</p>
-            <div className={`btn ${selectedPlan === plan ? 'btn-primary' : 'btn-secondary'} btn-full`}>
-              {plan === 'Basic' ? 'Choose Basic' : 'Choose Pro'}
-            </div>
+
             <ul>
               {plan === 'Basic' ? (
                 <>
@@ -62,6 +60,10 @@ export default function RegisterSubscriptionPage() {
                   <li>Priority 24/7 support</li>
                 </>
               )}
+
+              <div className={`btn ${selectedPlan === plan ? 'btn-primary' : 'btn-secondary'} btn-full`}>
+                {plan === 'Basic' ? 'Choose Basic' : 'Choose Pro'}
+              </div>
             </ul>
           </button>
         ))}

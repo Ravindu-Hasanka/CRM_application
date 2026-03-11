@@ -3,13 +3,11 @@ import type { FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { ApiError, createOrganization } from '../../api/client'
-import { useAuth } from '../../contexts/AuthContext'
 import type { RegistrationDraft, SubscriptionPlan } from '../../types'
 
 export default function RegisterOrganizationPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { tokens, user } = useAuth()
   const selectedPlan = useMemo<SubscriptionPlan>(() => (searchParams.get('plan') === 'Pro' ? 'Pro' : 'Basic'), [searchParams])
 
   const [organizationName, setOrganizationName] = useState('')
@@ -37,18 +35,13 @@ export default function RegisterOrganizationPage() {
 
     setLoading(true)
     try {
-      if (tokens?.access && user?.role === 'SystemAdmin') {
-        await createOrganization(
-          {
-            name: organizationName,
-            subscription_plan: selectedPlan,
-            admin_email: adminEmail,
-            admin_password: adminPassword,
-            admin_username: adminUsername || undefined,
-          },
-          tokens.access,
-        )
-      }
+      await createOrganization({
+        name: organizationName,
+        subscription_plan: selectedPlan,
+        admin_email: adminEmail,
+        admin_password: adminPassword,
+        admin_username: adminUsername || undefined,
+      })
       navigate('/register/success', { state: draft, replace: true })
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Registration failed. Please try again.'

@@ -654,6 +654,9 @@ select:focus {
 }
 
 .menu-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   border: 0;
   background: transparent;
   text-align: left;

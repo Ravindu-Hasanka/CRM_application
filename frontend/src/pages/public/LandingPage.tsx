@@ -1,35 +1,46 @@
 import { Link } from 'react-router-dom'
+import {
+  HiOutlineArrowTrendingUp,
+  HiOutlineEnvelope,
+  HiOutlineBolt,
+  HiOutlineUserGroup,
+  HiOutlineChartBar,
+  HiOutlineShieldCheck,
+} from 'react-icons/hi2'
+import { FaStarOfLife, FaFacebookF, FaLinkedinIn } from 'react-icons/fa'
+import { FiYoutube } from 'react-icons/fi'
+import { FiArrowRight } from 'react-icons/fi'
 
 const features = [
   {
     title: 'AI Forecasting',
     body: 'Predict future revenue with smart models built from historical patterns and sales activity.',
-    icon: '↗',
+    icon: HiOutlineArrowTrendingUp,
   },
   {
     title: 'Unified Inbox',
     body: 'Manage all customer communication from email, SMS, and social channels in one place.',
-    icon: '✉',
+    icon: HiOutlineEnvelope,
   },
   {
     title: 'Automated Workflows',
     body: 'Reduce manual work by automating repetitive follow-ups, tasks, and pipeline actions.',
-    icon: '⚡',
+    icon: HiOutlineBolt,
   },
   {
     title: 'Team Collaboration',
     body: 'Keep teams aligned with shared notes, task ownership, and real-time updates.',
-    icon: '👥',
+    icon: HiOutlineUserGroup,
   },
   {
     title: 'Advanced Reporting',
     body: 'Track performance, conversion rates, and pipeline health with clear visual reporting.',
-    icon: '▣',
+    icon: HiOutlineChartBar,
   },
   {
     title: 'Enterprise Security',
     body: 'Protect your data with access controls, audit logs, and enterprise-grade safeguards.',
-    icon: '🛡',
+    icon: HiOutlineShieldCheck,
   },
 ]
 
@@ -46,22 +57,22 @@ export default function LandingPage() {
       <main>
         <section className="px-6 pb-16 pt-16 md:pb-20 md:pt-20">
           <div className="mx-auto max-w-7xl text-center">
-            <div className="mb-6 w-full flex flex-col items-center">
+            <div className="mb-6 flex w-full flex-col items-center">
               <span className="inline-flex rounded-full bg-blue-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-600">
-              Now with AI-powered insights
-            </span>
+                Now with AI-powered insights
+              </span>
 
-            <h1 className="mx-auto mt-6 max-w-4xl text-4xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-5xl md:text-6xl">
-              Supercharge Your Sales
-              <br />
-              with <span className="text-blue-600">NexGen CRM</span>
-            </h1>
+              <h1 className="mx-auto mt-6 max-w-4xl text-4xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-5xl md:text-6xl">
+                Supercharge Your Sales
+                <br />
+                with <span className="text-blue-600">NexGen CRM</span>
+              </h1>
 
-            <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-slate-500 md:text-lg">
-              The next-generation platform for managing customer relationships,
-              streamlining workflows, and scaling your business with AI-driven
-              insights.
-            </p>
+              <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-slate-500 md:text-lg">
+                The next-generation platform for managing customer relationships,
+                streamlining workflows, and scaling your business with AI-driven
+                insights.
+              </p>
             </div>
 
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
@@ -69,7 +80,7 @@ export default function LandingPage() {
                 to="/register/subscription"
                 className="inline-flex h-12 items-center justify-center rounded-xl bg-blue-600 px-6 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700"
               >
-                Start Your Free Trial →
+                Start Your Free Trial <FiArrowRight className="ml-1 h-4 w-4" />
               </Link>
               <Link
                 to="/login"
@@ -126,18 +137,22 @@ export default function LandingPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {features.map((feature) => (
-                <article
-                  key={feature.title}
-                  className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition hover:-translate-y-1"
-                >
-                  <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                    {feature.icon}
-                  </div>
-                  <h3 className="text-lg font-semibold text-slate-900">{feature.title}</h3>
-                  <p className="mt-3 text-sm leading-7 text-slate-500">{feature.body}</p>
-                </article>
-              ))}
+              {features.map((feature) => {
+                const Icon = feature.icon
+
+                return (
+                  <article
+                    key={feature.title}
+                    className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition hover:-translate-y-1"
+                  >
+                    <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-slate-900">{feature.title}</h3>
+                    <p className="mt-3 text-sm leading-7 text-slate-500">{feature.body}</p>
+                  </article>
+                )
+              })}
             </div>
           </div>
         </section>
@@ -147,7 +162,7 @@ export default function LandingPage() {
             {metrics.map((metric) => (
               <article key={metric.label}>
                 <h3 className="text-3xl font-extrabold">{metric.value}</h3>
-                <p className="mt-2 text-sm text-white/85">{metric.label}</p>
+                <p className="mt-2 text-sm text-white">{metric.label}</p>
               </article>
             ))}
           </div>
@@ -159,10 +174,6 @@ export default function LandingPage() {
               <h2 className="text-3xl font-extrabold tracking-tight md:text-5xl">
                 Ready to transform your sales process?
               </h2>
-              <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-white/75">
-                Join 10,000+ businesses growing faster with NexGen CRM. No credit
-                card required to start.
-              </p>
 
               <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
                 <Link
@@ -187,8 +198,8 @@ export default function LandingPage() {
         <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 pb-10 md:grid-cols-2 xl:grid-cols-4">
           <div>
             <Link to="/" className="flex items-center gap-3 text-sm font-bold text-slate-900">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-sm text-white shadow-sm">
-                ✦
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
+                <FaStarOfLife className="h-3.5 w-3.5" />
               </span>
               <span>NexGen CRM</span>
             </Link>
@@ -198,16 +209,25 @@ export default function LandingPage() {
               teams. Scale faster with data-driven decisions.
             </p>
 
-            <div className="mt-5 flex gap-3 text-slate-500">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200">
-                ◉
-              </span>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200">
-                ◉
-              </span>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200">
-                ◉
-              </span>
+            <div className="mt-5 flex gap-3">
+              <a
+                href="/"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-blue-600 hover:text-blue-600"
+              >
+                <FaFacebookF className="h-3.5 w-3.5" />
+              </a>
+              <a
+                href="/"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-blue-600 hover:text-blue-600"
+              >
+                <FiYoutube className="h-4 w-4" />
+              </a>
+              <a
+                href="/"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-blue-600 hover:text-blue-600"
+              >
+                <FaLinkedinIn className="h-3.5 w-3.5" />
+              </a>
             </div>
           </div>
 

@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
+import { FaStarOfLife } from 'react-icons/fa'
 
 export default function PublicLayout() {
   const { pathname } = useLocation()
@@ -10,7 +11,7 @@ export default function PublicLayout() {
         <div className="mx-auto flex min-h-[72px] w-full max-w-7xl items-center justify-between gap-6 px-6">
           <Link to="/" className="flex items-center gap-3 text-sm font-bold text-slate-900">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-sm text-white shadow-sm">
-              ✦
+              <FaStarOfLife className="h-3.5 w-3.5" />
             </span>
             <span>NexGen CRM</span>
           </Link>
@@ -43,16 +44,6 @@ export default function PublicLayout() {
       <main>
         <Outlet />
       </main>
-      {!isAuthScreen && (
-        <footer id="support" className="public-footer">
-          <p>© 2026 NexusCRM. Built for modern sales teams.</p>
-          <div className="public-footer-links">
-            <a href="#">Privacy</a>
-            <a href="#">Terms</a>
-            <a href="#">Help</a>
-          </div>
-        </footer>
-      )}
     </div>
   )
 }

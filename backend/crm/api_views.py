@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework import generics
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -41,6 +41,34 @@ class LoginView(TokenObtainPairView):
                 },
                 response_only=True,
             ),
+        ],
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
+
+class PublicOrganizationRegistrationView(generics.CreateAPIView):
+    queryset = Organization.objects.all()
+    serializer_class = OrganizationCreateSerializer
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        tags=['Auth'],
+        summary='Public organization registration',
+        request=OrganizationCreateSerializer,
+        responses={201: OrganizationCreateSerializer},
+        examples=[
+            OpenApiExample(
+                'Organization signup request',
+                value={
+                    'name': 'Acme Ltd',
+                    'subscription_plan': 'Pro',
+                    'admin_email': 'admin@acme.com',
+                    'admin_password': 'StrongPass123!',
+                    'admin_username': 'acme-admin',
+                },
+                request_only=True,
+            )
         ],
     )
     def post(self, request, *args, **kwargs):

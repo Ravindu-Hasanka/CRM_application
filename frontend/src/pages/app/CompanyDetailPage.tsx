@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { FaCircle } from 'react-icons/fa'
 
 import { getCompanies, getContacts } from '../../api/client'
 import { useAuth } from '../../contexts/AuthContext'
@@ -45,8 +46,10 @@ export default function CompanyDetailPage() {
       <header className="panel panel-header">
         <div>
           <h2>{company.name}</h2>
-          <p>
-            {company.industry} • {company.country}
+          <p className="inline-actions">
+            <span>{company.industry}</span>
+            <FaCircle className="h-2 w-2" />
+            <span>{company.country}</span>
           </p>
         </div>
         {canEdit && (

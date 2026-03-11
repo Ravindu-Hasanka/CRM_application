@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { FaBolt, FaBuilding, FaUsers } from 'react-icons/fa6'
 
 import { getActivityLogs, getCompanies, getContacts } from '../../api/client'
 import { useAuth } from '../../contexts/AuthContext'
 import type { ActivityLog, Company, Contact } from '../../types'
+
+const statIcons = [FaBuilding, FaUsers, FaBolt]
 
 export default function DashboardPage() {
   const { tokens, user } = useAuth()
@@ -48,14 +51,21 @@ export default function DashboardPage() {
   return (
     <section className="content-stack">
       <div className="stats-grid">
-        {stats.map((stat, index) => (
-          <article key={stat.label} className="stat-card">
-            <div className="stat-icon">{index === 0 ? '▣' : index === 1 ? '◔' : '⚡'}</div>
-            <p>{stat.label}</p>
-            <h3>{loading ? '...' : stat.value}</h3>
-            <span className={`trend ${index === 2 ? 'negative' : ''}`}>{index === 2 ? '-2%' : index === 0 ? '+12%' : '+5.2%'}</span>
-          </article>
-        ))}
+        {stats.map((stat, index) => {
+          const Icon = statIcons[index]
+          return (
+            <article key={stat.label} className="stat-card">
+              <div className="stat-icon">
+                <Icon className="h-4 w-4" />
+              </div>
+              <p>{stat.label}</p>
+              <h3>{loading ? '...' : stat.value}</h3>
+              <span className={`trend ${index === 2 ? 'negative' : ''}`}>
+                {index === 2 ? '-2%' : index === 0 ? '+12%' : '+5.2%'}
+              </span>
+            </article>
+          )
+        })}
       </div>
 
       <article className="panel">

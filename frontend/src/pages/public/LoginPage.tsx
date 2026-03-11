@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { FaStarOfLife } from 'react-icons/fa'
 
 import { ApiError } from '../../api/client'
 import { useAuth } from '../../contexts/AuthContext'
@@ -33,7 +34,9 @@ export default function LoginPage() {
   return (
     <div className="auth-page auth-login-page">
       <section className="auth-side-panel auth-side-blue">
-        <div className="auth-brand">✦ NexusCRM</div>
+        <div className="auth-brand inline-actions" style={{ color: 'white' }}>
+          <FaStarOfLife className="h-4 w-4" /> NexusCRM
+        </div>
         <h2>Empower your sales team to reach new heights.</h2>
         <p>
           The all-in-one relationship management platform designed to accelerate growth, optimize pipelines,
@@ -72,7 +75,7 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="••••••••"
+              placeholder="Enter password"
               autoComplete="current-password"
             />
           </label>
