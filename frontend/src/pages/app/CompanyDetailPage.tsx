@@ -20,6 +20,11 @@ export default function CompanyDetailPage() {
   const [contactRole, setContactRole] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [editingContact, setEditingContact] = useState<Contact | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editRole, setEditRole] = useState('')
 
   useEffect(() => {
     if (!id || !tokens?.access) return
@@ -81,16 +86,39 @@ export default function CompanyDetailPage() {
     }
   }
 
-  async function onQuickEdit(contact: Contact) {
-    if (!tokens?.access) return
-    const fullName = window.prompt('Full name', contact.full_name)
-    if (!fullName) return
-    const role = window.prompt('Role', contact.role)
-    if (!role) return
+  function onOpenEdit(contact: Contact) {
+    setEditingContact(contact)
+    setEditName(contact.full_name)
+    setEditEmail(contact.email)
+    setEditPhone(contact.phone)
+    setEditRole(contact.role)
+  }
+
+  function onCloseEdit() {
+    setEditingContact(null)
+    setEditName('')
+    setEditEmail('')
+    setEditPhone('')
+    setEditRole('')
+  }
+
+  async function onSaveEdit() {
+    if (!tokens?.access || !editingContact) return
+    if (!editName.trim() || !editEmail.trim() || !editRole.trim()) {
+      showToast('Name, email, and role are required.', 'error', 12000)
+      return
+    }
+
     try {
-      const updated = await updateContact(tokens.access, contact.id, { full_name: fullName, role })
+      const updated = await updateContact(tokens.access, editingContact.id, {
+        full_name: editName.trim(),
+        email: editEmail.trim(),
+        phone: editPhone.trim(),
+        role: editRole.trim(),
+      })
       setContacts((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
       showToast('Contact updated successfully.', 'success', 10000)
+      onCloseEdit()
     } catch (err) {
       showToast(err instanceof ApiError ? err.message : 'Failed to update contact.', 'error', 14000)
     }
@@ -177,7 +205,7 @@ export default function CompanyDetailPage() {
                 <td>{contact.role}</td>
                 <td className="inline-actions">
                   {canEdit && (
-                    <button type="button" className="table-link" onClick={() => void onQuickEdit(contact)}>
+                    <button type="button" className="table-link" onClick={() => onOpenEdit(contact)}>
                       Edit
                     </button>
                   )}
@@ -197,6 +225,45 @@ export default function CompanyDetailPage() {
           </tbody>
         </table>
       </article>
+
+      {editingContact && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Edit contact">
+          <div className="modal-card">
+            <div className="panel-header-inline">
+              <h3>Edit Contact</h3>
+              <button type="button" className="btn btn-secondary" onClick={onCloseEdit}>
+                Close
+              </button>
+            </div>
+            <div className="users-form-grid" style={{ marginTop: '0.4rem' }}>
+              <label>
+                Full Name
+                <input value={editName} onChange={(event) => setEditName(event.target.value)} />
+              </label>
+              <label>
+                Email
+                <input type="email" value={editEmail} onChange={(event) => setEditEmail(event.target.value)} />
+              </label>
+              <label>
+                Phone
+                <input value={editPhone} onChange={(event) => setEditPhone(event.target.value)} />
+              </label>
+              <label>
+                Role
+                <input value={editRole} onChange={(event) => setEditRole(event.target.value)} />
+              </label>
+            </div>
+            <div className="inline-actions" style={{ justifyContent: 'flex-end', marginTop: '1rem' }}>
+              <button type="button" className="btn btn-secondary" onClick={onCloseEdit}>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-primary" onClick={() => void onSaveEdit()}>
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

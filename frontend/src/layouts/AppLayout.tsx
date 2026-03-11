@@ -32,7 +32,6 @@ export default function AppLayout() {
           </span>
           <span className="brand-text">CRM Admin</span>
         </Link>
-        <p className="sidebar-version">v1.0.2 - Enterprise</p>
 
         <nav className="app-menu">
           {menuItems.map((item) => {
