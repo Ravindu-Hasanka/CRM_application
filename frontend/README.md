@@ -52,7 +52,3 @@ App URL: `http://127.0.0.1:5173`
 npm run build
 ```
 
-## Notes
-- API client auto-appends trailing slashes to match Django behavior.
-- If access token expires, client uses refresh token and retries once.
-- If refresh fails, auth storage is cleared and user must log in again.
