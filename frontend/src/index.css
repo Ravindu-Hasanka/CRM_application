@@ -995,6 +995,13 @@ button.table-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+
+.company-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .company-cell p {
@@ -1097,6 +1104,75 @@ button.table-link {
   background: #fff;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
   padding: 1rem;
+}
+
+.org-logo-panel {
+  margin: 0.8rem 0 1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f8fbff;
+  padding: 0.9rem;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.org-logo-preview {
+  width: 82px;
+  height: 82px;
+  border-radius: 12px;
+  border: 1px solid #cfdcf0;
+  background: #e8f1ff;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: #24558f;
+  font-weight: 800;
+}
+
+.org-logo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.org-logo-info h3 {
+  margin-bottom: 0.35rem;
+}
+
+.org-logo-info p {
+  margin-bottom: 0.55rem;
+}
+
+.company-logo-preview {
+  width: 120px;
+  height: 120px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f5f9ff;
+}
+
+.company-logo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.company-detail-logo {
+  width: 96px;
+  height: 96px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  margin-bottom: 0.8rem;
+  background: #f5f9ff;
+}
+
+.company-detail-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 @media (max-width: 1100px) {

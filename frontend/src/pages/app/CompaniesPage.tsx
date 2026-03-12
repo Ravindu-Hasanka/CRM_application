@@ -56,6 +56,13 @@ export default function CompaniesPage() {
 
   const canEdit = user?.role === 'Admin' || user?.role === 'Manager' || user?.role === 'SystemAdmin'
   const canDelete = user?.role === 'Admin' || user?.role === 'SystemAdmin'
+  const apiBase = (import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api/v1').replace(/\/api\/v1\/?$/, '')
+
+  function resolveLogoUrl(url: string | null) {
+    if (!url) return null
+    if (url.startsWith('http://') || url.startsWith('https://')) return url
+    return `${apiBase}${url}`
+  }
 
   async function onDelete(companyId: number) {
     if (!tokens?.access) return
@@ -135,7 +142,13 @@ export default function CompaniesPage() {
               <tr key={company.id}>
                 <td>
                   <div className="company-cell">
-                    <span className="company-avatar">{company.name.slice(0, 2).toUpperCase()}</span>
+                    <span className="company-avatar">
+                      {resolveLogoUrl(company.logo) ? (
+                        <img src={resolveLogoUrl(company.logo) ?? ''} alt={`${company.name} logo`} />
+                      ) : (
+                        company.name.slice(0, 2).toUpperCase()
+                      )}
+                    </span>
                     <div>
                       <strong>{company.name}</strong>
                       <p>{company.name.toLowerCase().replace(/\s+/g, '')}.com</p>

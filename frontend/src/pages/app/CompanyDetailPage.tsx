@@ -25,6 +25,13 @@ export default function CompanyDetailPage() {
   const [editEmail, setEditEmail] = useState('')
   const [editPhone, setEditPhone] = useState('')
   const [editRole, setEditRole] = useState('')
+  const apiBase = (import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api/v1').replace(/\/api\/v1\/?$/, '')
+
+  function resolveLogoUrl(url: string | null) {
+    if (!url) return null
+    if (url.startsWith('http://') || url.startsWith('https://')) return url
+    return `${apiBase}${url}`
+  }
 
   useEffect(() => {
     if (!id || !tokens?.access) return
@@ -147,6 +154,11 @@ export default function CompanyDetailPage() {
     <section className="content-stack">
       <header className="panel panel-header">
         <div>
+          {resolveLogoUrl(company.logo) && (
+            <div className="company-detail-logo">
+              <img src={resolveLogoUrl(company.logo) ?? ''} alt={`${company.name} logo`} />
+            </div>
+          )}
           <h2>{company.name}</h2>
           <p className="inline-actions">
             <span>{company.industry}</span>

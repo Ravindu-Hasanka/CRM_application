@@ -1,4 +1,4 @@
-import type { ActivityLog, AuthTokens, Company, Contact, UserProfile, UserRole } from '../types'
+import type { ActivityLog, AuthTokens, Company, Contact, OrganizationProfile, UserProfile, UserRole } from '../types'
 import { clearTokens, clearUser, loadTokens, saveTokens } from '../utils/authStorage'
 
 const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api/v1'
@@ -40,6 +40,30 @@ function normalizePath(path: string): string {
   return query ? `${normalizedPathname}?${query}` : normalizedPathname
 }
 
+async function tryRefreshAccessToken(): Promise<string | null> {
+  const storedTokens = loadTokens()
+  if (!storedTokens?.refresh) return null
+
+  const refreshResponse = await fetch(`${API_BASE_URL}${normalizePath('/auth/refresh')}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ refresh: storedTokens.refresh }),
+  })
+
+  if (!refreshResponse.ok) {
+    clearTokens()
+    clearUser()
+    return null
+  }
+
+  const refreshed = (await refreshResponse.json()) as { access: string }
+  const nextTokens: AuthTokens = { ...storedTokens, access: refreshed.access }
+  saveTokens(nextTokens)
+  return nextTokens.access
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit, accessToken?: string): Promise<T> {
   const storedTokens = loadTokens()
   let effectiveAccessToken = accessToken
@@ -59,30 +83,16 @@ async function apiFetch<T>(path: string, init?: RequestInit, accessToken?: strin
   })
 
   if (response.status === 401 && effectiveAccessToken && storedTokens?.refresh) {
-    const refreshResponse = await fetch(`${API_BASE_URL}${normalizePath('/auth/refresh')}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ refresh: storedTokens.refresh }),
-    })
-
-    if (refreshResponse.ok) {
-      const refreshed = (await refreshResponse.json()) as { access: string }
-      const nextTokens: AuthTokens = { ...storedTokens, access: refreshed.access }
-      saveTokens(nextTokens)
-
+    const refreshedAccess = await tryRefreshAccessToken()
+    if (refreshedAccess) {
       const retryHeaders = new Headers(init?.headers ?? {})
       retryHeaders.set('Content-Type', 'application/json')
-      retryHeaders.set('Authorization', `Bearer ${nextTokens.access}`)
+      retryHeaders.set('Authorization', `Bearer ${refreshedAccess}`)
 
       response = await fetch(`${API_BASE_URL}${normalizePath(path)}`, {
         ...init,
         headers: retryHeaders,
       })
-    } else {
-      clearTokens()
-      clearUser()
     }
   }
 
@@ -152,8 +162,46 @@ export async function getCompany(accessToken: string, id: number): Promise<Compa
 
 export async function createCompany(
   accessToken: string,
-  payload: { name: string; industry: string; country: string; organization?: number },
+  payload: { name: string; industry: string; country: string; logo?: File | null; organization?: number },
 ): Promise<Company> {
+  if (payload.logo) {
+    const formData = new FormData()
+    formData.append('name', payload.name)
+    formData.append('industry', payload.industry)
+    formData.append('country', payload.country)
+    formData.append('logo', payload.logo)
+
+    const doRequest = async (token: string) =>
+      fetch(`${API_BASE_URL}${normalizePath('/companies')}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      })
+
+    let response = await doRequest(accessToken)
+    if (response.status === 401) {
+      const refreshedAccess = await tryRefreshAccessToken()
+      if (refreshedAccess) {
+        response = await doRequest(refreshedAccess)
+      }
+    }
+
+    if (!response.ok) {
+      let detail = `Request failed with status ${response.status}`
+      try {
+        const body = await response.json()
+        if (body?.detail) detail = body.detail
+      } catch {
+        // Ignore parsing errors and keep fallback detail.
+      }
+      throw new ApiError(detail, response.status)
+    }
+
+    return response.json() as Promise<Company>
+  }
+
   return apiFetch<Company>('/companies', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -163,8 +211,46 @@ export async function createCompany(
 export async function updateCompany(
   accessToken: string,
   id: number,
-  payload: Partial<{ name: string; industry: string; country: string; organization: number }>,
+  payload: Partial<{ name: string; industry: string; country: string; logo: File | null; organization: number }>,
 ): Promise<Company> {
+  if (payload.logo) {
+    const formData = new FormData()
+    if (payload.name !== undefined) formData.append('name', payload.name)
+    if (payload.industry !== undefined) formData.append('industry', payload.industry)
+    if (payload.country !== undefined) formData.append('country', payload.country)
+    formData.append('logo', payload.logo)
+
+    const doRequest = async (token: string) =>
+      fetch(`${API_BASE_URL}${normalizePath(`/companies/${id}`)}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      })
+
+    let response = await doRequest(accessToken)
+    if (response.status === 401) {
+      const refreshedAccess = await tryRefreshAccessToken()
+      if (refreshedAccess) {
+        response = await doRequest(refreshedAccess)
+      }
+    }
+
+    if (!response.ok) {
+      let detail = `Request failed with status ${response.status}`
+      try {
+        const body = await response.json()
+        if (body?.detail) detail = body.detail
+      } catch {
+        // Ignore parsing errors and keep fallback detail.
+      }
+      throw new ApiError(detail, response.status)
+    }
+
+    return response.json() as Promise<Company>
+  }
+
   return apiFetch<Company>(`/companies/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
@@ -245,6 +331,45 @@ export async function createOrganization(
     method: 'POST',
     body: JSON.stringify(payload),
   })
+}
+
+export async function getMyOrganization(accessToken: string): Promise<OrganizationProfile> {
+  return apiFetch<OrganizationProfile>('/organization/me', undefined, accessToken)
+}
+
+export async function uploadOrganizationLogo(accessToken: string, logoFile: File): Promise<OrganizationProfile> {
+  const formData = new FormData()
+  formData.append('logo', logoFile)
+
+  const doRequest = async (token: string) =>
+    fetch(`${API_BASE_URL}${normalizePath('/organization/me')}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    })
+
+  let response = await doRequest(accessToken)
+  if (response.status === 401) {
+    const refreshedAccess = await tryRefreshAccessToken()
+    if (refreshedAccess) {
+      response = await doRequest(refreshedAccess)
+    }
+  }
+
+  if (!response.ok) {
+    let detail = `Request failed with status ${response.status}`
+    try {
+      const payload = await response.json()
+      if (payload?.detail) detail = payload.detail
+    } catch {
+      // Ignore parsing errors and keep fallback detail.
+    }
+    throw new ApiError(detail, response.status)
+  }
+
+  return response.json() as Promise<OrganizationProfile>
 }
 
 export async function listUsers(accessToken: string): Promise<UserProfile[]> {

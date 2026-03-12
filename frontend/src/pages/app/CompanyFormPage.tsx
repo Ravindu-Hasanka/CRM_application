@@ -16,6 +16,8 @@ export default function CompanyFormPage() {
   const [name, setName] = useState('')
   const [industry, setIndustry] = useState('')
   const [country, setCountry] = useState('')
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [existingLogoUrl, setExistingLogoUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(false)
 
@@ -27,6 +29,7 @@ export default function CompanyFormPage() {
         setName(company.name)
         setIndustry(company.industry)
         setCountry(company.country)
+        setExistingLogoUrl(company.logo)
       })
       .catch((err) => {
         showToast(err instanceof ApiError ? err.message : 'Failed to load company details.', 'error', 14000)
@@ -42,10 +45,10 @@ export default function CompanyFormPage() {
     setLoading(true)
     try {
       if (isEdit && id) {
-        await updateCompany(tokens.access, Number(id), { name, industry, country })
+        await updateCompany(tokens.access, Number(id), { name, industry, country, logo: logoFile })
         showToast('Company updated successfully.', 'success', 10000)
       } else {
-        await createCompany(tokens.access, { name, industry, country })
+        await createCompany(tokens.access, { name, industry, country, logo: logoFile })
         showToast('Company created successfully.', 'success', 10000)
       }
       setTimeout(() => navigate('/app/companies'), 600)
@@ -85,9 +88,14 @@ export default function CompanyFormPage() {
         </label>
         <label>
           Logo
-          <input type="file" disabled />
+          <input type="file" accept="image/*" onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)} />
         </label>
-        <p className="muted">Logo upload will be connected after S3 integration stage.</p>
+        {logoFile && <p className="muted">Selected file: {logoFile.name}</p>}
+        {!logoFile && existingLogoUrl && (
+          <div className="company-logo-preview">
+            <img src={existingLogoUrl} alt="Company logo" />
+          </div>
+        )}
         <div className="inline-actions">
           <button type="submit" className="btn btn-primary" disabled={loading}>
             {loading ? 'Saving...' : 'Save'}

@@ -11,8 +11,19 @@ export interface UserProfile {
   email: string
   username: string | null
   organization_id: number | null
+  organization_name?: string | null
+  organization_logo?: string | null
   role: UserRole
   is_active: boolean
+  created_at: string
+}
+
+export interface OrganizationProfile {
+  id: number
+  name: string
+  subscription_plan: SubscriptionPlan
+  logo: string | null
+  logo_url: string | null
   created_at: string
 }
 
