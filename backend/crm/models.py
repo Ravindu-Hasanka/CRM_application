@@ -23,6 +23,7 @@ class Organization(models.Model):
         choices=SubscriptionPlan.choices,
         default=SubscriptionPlan.BASIC,
     )
+    logo = models.FileField(upload_to='organization_logos/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:

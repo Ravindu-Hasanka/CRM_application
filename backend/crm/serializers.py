@@ -18,9 +18,48 @@ class CRMTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 
 class UserMeSerializer(serializers.ModelSerializer):
+    organization_name = serializers.SerializerMethodField()
+    organization_logo = serializers.SerializerMethodField()
+
     class Meta:
         model = UserModel
-        fields = ('id', 'email', 'username', 'organization_id', 'role', 'is_active', 'created_at')
+        fields = (
+            'id',
+            'email',
+            'username',
+            'organization_id',
+            'organization_name',
+            'organization_logo',
+            'role',
+            'is_active',
+            'created_at',
+        )
+
+    def get_organization_name(self, obj):
+        return obj.organization.name if obj.organization else None
+
+    def get_organization_logo(self, obj):
+        if not obj.organization or not obj.organization.logo:
+            return None
+        request = self.context.get('request')
+        url = obj.organization.logo.url
+        return request.build_absolute_uri(url) if request else url
+
+
+class OrganizationMeSerializer(serializers.ModelSerializer):
+    logo_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Organization
+        fields = ('id', 'name', 'subscription_plan', 'logo', 'logo_url', 'created_at')
+        read_only_fields = ('id', 'created_at', 'subscription_plan')
+
+    def get_logo_url(self, obj):
+        if not obj.logo:
+            return None
+        request = self.context.get('request')
+        url = obj.logo.url
+        return request.build_absolute_uri(url) if request else url
 
 
 class UserCreateSerializer(serializers.ModelSerializer):

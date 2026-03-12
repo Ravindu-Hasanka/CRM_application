@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework import generics, status, viewsets
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -16,6 +17,7 @@ from .serializers import (
     ContactSerializer,
     CRMTokenObtainPairSerializer,
     OrganizationCreateSerializer,
+    OrganizationMeSerializer,
     UserCreateSerializer,
     UserMeSerializer,
 )
@@ -86,7 +88,45 @@ class MeView(APIView):
         responses={200: UserMeSerializer},
     )
     def get(self, request):
-        serializer = UserMeSerializer(request.user)
+        serializer = UserMeSerializer(request.user, context={'request': request})
+        return Response(serializer.data)
+
+
+class OrganizationMeView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    @extend_schema(
+        tags=['Organization'],
+        summary='Get current user organization',
+        responses={200: OrganizationMeSerializer},
+    )
+    def get(self, request):
+        if not request.user.organization:
+            return Response({'detail': 'No organization associated with this user.'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = OrganizationMeSerializer(request.user.organization, context={'request': request})
+        return Response(serializer.data)
+
+    @extend_schema(
+        tags=['Organization'],
+        summary='Update current user organization logo',
+        request=OrganizationMeSerializer,
+        responses={200: OrganizationMeSerializer},
+    )
+    def patch(self, request):
+        if not request.user.organization:
+            return Response({'detail': 'No organization associated with this user.'}, status=status.HTTP_400_BAD_REQUEST)
+        if request.user.role not in {User.Role.ADMIN, User.Role.SYSTEM_ADMIN}:
+            return Response({'detail': 'You do not have permission to update organization logo.'}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = OrganizationMeSerializer(
+            request.user.organization,
+            data=request.data,
+            partial=True,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(serializer.data)
 
 

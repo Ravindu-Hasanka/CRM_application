@@ -36,6 +36,13 @@ def _load_local_env() -> None:
 _load_local_env()
 
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
@@ -63,6 +70,9 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'crm.apps.CrmConfig',
 ]
+
+if _env_bool('USE_S3', default=False):
+    INSTALLED_APPS.append('storages')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -213,6 +223,38 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+USE_S3 = _env_bool('USE_S3', default=False)
+
+if USE_S3:
+    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', '')
+    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY', '')
+    AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME', '')
+    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', '')
+    AWS_S3_SIGNATURE_VERSION = os.getenv('AWS_S3_SIGNATURE_VERSION', 's3v4')
+    AWS_S3_FILE_OVERWRITE = _env_bool('AWS_S3_FILE_OVERWRITE', default=False)
+    AWS_DEFAULT_ACL = os.getenv('AWS_DEFAULT_ACL') or None
+    AWS_QUERYSTRING_AUTH = _env_bool('AWS_QUERYSTRING_AUTH', default=False)
+    AWS_S3_ADDRESSING_STYLE = os.getenv('AWS_S3_ADDRESSING_STYLE', 'virtual')
+    AWS_S3_CUSTOM_DOMAIN = os.getenv('AWS_S3_CUSTOM_DOMAIN', '')
+
+    default_storage_backend = 'storages.backends.s3.S3Storage'
+    staticfiles_storage_backend = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+    STORAGES = {
+        'default': {'BACKEND': default_storage_backend},
+        'staticfiles': {'BACKEND': staticfiles_storage_backend},
+    }
+
+    if AWS_S3_CUSTOM_DOMAIN:
+        MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+    elif AWS_STORAGE_BUCKET_NAME and AWS_S3_REGION_NAME:
+        MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/'
+    elif AWS_STORAGE_BUCKET_NAME:
+        MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/'
+    else:
+        MEDIA_URL = '/media/'
+else:
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'
 
 CORS_ALLOWED_ORIGINS = [
     os.getenv('FRONTEND_URL', 'http://127.0.0.1:5173'),
