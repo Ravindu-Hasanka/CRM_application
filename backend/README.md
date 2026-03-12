@@ -77,11 +77,4 @@ python manage.py runserver
 - For private bucket + signed URLs, set `AWS_QUERYSTRING_AUTH=true`.
 - For public URLs, set `AWS_QUERYSTRING_AUTH=false` and bucket policy accordingly.
 
-## Common issues
-- `ModuleNotFoundError: storages`
-  - Run `pip install -r requirements.txt`
-- S3 `403 HeadObject Forbidden`
-  - Ensure IAM policy includes:
-    - `s3:ListBucket` on bucket
-    - `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` on `bucket/*`
 
